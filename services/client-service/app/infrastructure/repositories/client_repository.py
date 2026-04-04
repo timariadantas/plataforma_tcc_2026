@@ -43,7 +43,7 @@ class ClientRepository(ClientRepositoryInterface):
         try:
             logger.info(f"Executando SELECT por ID: {client_id}")
             cursor.execute("""
-                SELECT id, name, surname, email, birthdate, active
+                SELECT id, name, surname, email, birthdate, active,
                    created_at, updated_at
                 FROM client
                 WHERE id = :id
