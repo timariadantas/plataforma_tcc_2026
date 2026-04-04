@@ -1,0 +1,11 @@
+services:
+  oracle-db:
+    image: gvenzl/oracle-xe
+    container_name: oracle-db
+    ports:
+      - "1521:1521"
+    env_file:
+      - .env
+    environment:
+      ORACLE_PASSWORD: ${DB_PASSWORD}
+    restart: always
