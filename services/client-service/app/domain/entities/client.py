@@ -18,13 +18,13 @@ class Client:
 # Validações do dominio
     def _validate(self, name, surname, email, birthdate):
         if not name or not name.strip():
-            raise Exception("Nome é Obrigatório")
+            raise ValueError("Nome é Obrigatório")
         if not surname or not surname.strip():
-            raise Exception("Sobrenome é obrigatório")
+            raise ValueError("Sobrenome é obrigatório")
         if not email or "@" not in email:
-            raise Exception("Email inválido")
+            raise ValueError("Email inválido")
         if not isinstance(birthdate, datetime):
-            raise Exception("Data de nascimento inválida")
+            raise ValueError("Data de nascimento inválida")
     
 # Comportamento de atualização e delete(lógico)
     def update(self, name:str, surname:str, email:str):
@@ -36,7 +36,7 @@ class Client:
         
     def disabled(self):
         if not self.active:
-            raise Exception("Cliente desativado")
+            raise ValueError("Cliente desativado")
         
         self.active = False
         self.updated_at = datetime.now()
