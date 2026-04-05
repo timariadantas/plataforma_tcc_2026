@@ -41,7 +41,7 @@ class ClientRepository(ClientRepositoryInterface):
     def get_by_id(self, client_id:str,conn):
         cursor = conn.cursor()
         try:
-            logger.info(f"Executando SELECT por ID: {client_id}")
+            logger.info(f"Executando SELECT por ID: {client_id, conn}")
             cursor.execute("""
                 SELECT id, name, surname, email, birthdate, active,
                    created_at, updated_at
@@ -79,7 +79,6 @@ class ClientRepository(ClientRepositoryInterface):
             logger.info(f"Total de clientes encontrados:{len(rows)}")
             return [self._map_to_entity(row) for row in rows]
 
-            return rows
         except Exception as e:
             logger.error(f"Erro ao buscar todos os clientes: {str(e)}")
             raise
@@ -90,7 +89,7 @@ class ClientRepository(ClientRepositoryInterface):
     def get_all_active(self, conn):
         cursor = conn.cursor()
         try:
-            logger.info(f"Executando SELECT de clientes ATIVOS.")
+            logger.info("Executando SELECT de clientes ATIVOS.")
             cursor.execute("""
                 SELECT id , name, surname, email, birthdate, active, created_at, updated_at
                 FROM client
