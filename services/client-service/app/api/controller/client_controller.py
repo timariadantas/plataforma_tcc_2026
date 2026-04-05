@@ -1,8 +1,11 @@
 from flask import Blueprint, request, jsonify
 from flasgger import swag_from
-from datetime import datetime
+
 from application.services.client_service import ClientService
 from domain.entities.client import Client
+from api.dto.client_resquest_dto import ClientRequestDto
+from api.dto.client_response_dto import ClientResponseDto
+
 
 client_bp = Blueprint("client", __name__)
 service = ClientService()
@@ -35,16 +38,16 @@ service = ClientService()
 })
 def create_client():
     try:
-        data = request.json
-        birthdate = datetime.strptime(data["birthdate"], "%Y-%m-%d")
+        dto = ClientRequestDto.from_dict(request.json)
         client = Client(
-            name=data["name"],
-            surname=data["surname"],
-            email=data["email"],
-            birthdate=birthdate,
+            name=dto.name,
+            surname=dto.surname,
+            email=dto.email,
+            birthdate=dto.birthdate
         )
         created = service.create_client(client)
-        return jsonify(created.to_dict()), 201
+        response_dto = ClientResponseDto.from_entity(created)
+        return jsonify(response_dto.to_dict()), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
@@ -63,9 +66,12 @@ def create_client():
 })
 def get_client(client_id):
     client = service.get_client(client_id)
+    
     if not client:
         return jsonify({"message": "Client not found"}), 404
-    return jsonify(client.to_dict()), 200
+    response_dto = ClientResponseDto.from_entity(client)
+    
+    return jsonify(response_dto.to_dict()), 200
 
 
 # Buscar todos os clientes
@@ -79,7 +85,11 @@ def get_client(client_id):
 })
 def get_all_clients():
     clients = service.get_all_clients()
-    return jsonify([c.to_dict() for c in clients]), 200
+    response =[
+        ClientResponseDto.from_entity(c).to_dict()
+        for c in clients
+    ]
+    return jsonify(response), 200
 
 
 # Buscar clientes ativos
@@ -92,7 +102,12 @@ def get_all_clients():
 })
 def get_active_clients():
     clients = service.get_active_clients()
-    return jsonify([c.to_dict() for c in clients]), 200
+    
+    response = [
+        ClientResponseDto.from_entity(c).to_dict()
+        for c in clients
+    ]
+    return jsonify(response), 200
 
 
 # Buscar clientes inativos
@@ -105,7 +120,11 @@ def get_active_clients():
 })
 def get_inactive_clients():
     clients = service.get_inactive_clients()
-    return jsonify([c.to_dict() for c in clients]), 200
+    response = [
+        ClientResponseDto.from_entity(c).to_dict()
+        for c in clients
+    ]
+    return jsonify(response), 200
 
 
 # Atualizar cliente
@@ -137,16 +156,17 @@ def get_inactive_clients():
 })
 def update_client(client_id):
     try:
-        data = request.json
-        birthdate = datetime.strptime(data["birthdate"], "%Y-%m-%d")
+        dto = ClientRequestDto.from_dict(request.json)
+        
         client = Client(
-            name=data["name"],
-            surname=data["surname"],
-            email=data["email"],
-            birthdate=birthdate
+            name=dto.name,
+            surname=dto.surname,
+            email=dto.email,
+            birthdate=dto.birthdate
         )
         client.id = client_id
         service.update_client(client)
+        
         return jsonify({"message": "Client updated successfully", "id": client_id}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400
