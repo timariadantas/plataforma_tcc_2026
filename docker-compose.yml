@@ -9,3 +9,21 @@ services:
     environment:
       ORACLE_PASSWORD: ${DB_PASSWORD}
     restart: always
+
+  mongo:
+    image: mongo
+    container_name: mongo_db
+    ports:
+      - "27017:27017"
+    restart: always
+
+  product-service:
+    build: ./services/product-service
+    container_name: product_service
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URI=mongodb://mongo_db:27017
+        
