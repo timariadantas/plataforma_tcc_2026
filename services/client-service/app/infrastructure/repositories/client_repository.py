@@ -44,7 +44,7 @@ class ClientRepository(ClientRepositoryInterface):
             logger.info(f"Executando SELECT por ID: {client_id, conn}")
             cursor.execute("""
                 SELECT id, name, surname, email, birthdate, active,
-                   created_at, updated_at
+                    created_at, updated_at
                 FROM client
                 WHERE id = :id
             """, {"id":client_id})
@@ -63,7 +63,8 @@ class ClientRepository(ClientRepositoryInterface):
         finally:
             cursor.close()
         
-         
+        
+        
     
     def get_all(self, conn):
         cursor = conn.cursor()
