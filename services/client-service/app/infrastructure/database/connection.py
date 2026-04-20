@@ -22,7 +22,7 @@ class DatabaseConnection:
         
         if not all([self.user, self.password, self.host, self.port, self.service_name]):
             logger.error("Variáveis de ambiente não configuradas corretamente")
-            raise Exception("Erro de configuração: verifique o arquivo .env")
+            raise ValueError("Erro de configuração: verifique o arquivo .env")
 
     @contextmanager
     def get_connection(self):
