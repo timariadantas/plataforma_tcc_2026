@@ -1,3 +1,4 @@
+using SalesService.Application.Repositories;
 using SalesService.Domain.Entities;
 using SalesService.Domain.Exceptions;
 using SalesService.Domain.Repositories;
@@ -43,7 +44,7 @@ public class SaleService : ISaleService
         var sale = _repository.GetById(saleId);
 
         if (sale == null)
-            throw new ValidationException("Sale not found");
+            throw new NotFoundException("Sale not found");
         
         if (!_productServiceFake.ProductsExists(productId))
             throw new NotFoundException("product not found");
