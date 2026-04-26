@@ -13,6 +13,12 @@ public class SaleItem
 
     public SaleItem (string saleId, string productId, int quantity)
     {
+         if (string.IsNullOrEmpty(productId))
+            throw new Exception("ProductId is required");
+
+        if (quantity <= 0)
+            throw new Exception("Quantity invalid");
+            
         SaleId = saleId;
         ProductId = productId;
         Quantity = quantity;
