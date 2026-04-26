@@ -21,72 +21,38 @@ public class SalesController : ControllerBase
     [HttpPost]
     public IActionResult Create([FromBody] CreateSaleRequest request)
     {
-        try
-        {
-            var sale = _service.CreateSale(request.ClientId);
-            var response = SaleMapper.ToResponse(sale);
-            return Ok (new { success = true, data = response });
-        }
-        catch(Exception ex)
-        {
-            return BadRequest(new { success = false, error = ex.Message });
-        }
-
+        var sale = _service.CreateSale(request.ClientId);
+        var response = SaleMapper.ToResponse(sale);
+        return Created ("", new { success = true, data = response });
     }
 
     [HttpGet("{id}")]
     public IActionResult GetById(string id)
     {
-        try
-        {
-            var sale = _service.GetById(id);
-            var response = SaleMapper.ToResponse(sale);
-            return Ok (new { success = true, data = response });
-        }
-        catch(Exception ex)
-        {
-            return NotFound(new { success = false, error = ex.Message });
-        }
+        var sale = _service.GetById(id);
+        var response = SaleMapper.ToResponse(sale);
+        return Ok (new { success = true, data = response });
     }
 
     [HttpPost("{id}/items")]
     public IActionResult AddItem(string id, [FromBody] AddItemRequest request)
     {
-        try
-        {
-            _service.AddItem(id, request.ProductId,request.Quantity);
-             return Ok(new { success = true });
-        }
-        catch(Exception ex)
-        {
-            return BadRequest(new { success = false, error = ex.Message });
-        }
+        _service.AddItem(id, request.ProductId,request.Quantity);
+        return Ok(new { success = true });
     }
 
     [HttpPost("{id}/finish")]
     public IActionResult Finish(string id)
     {
-        try{
-            _service.FinishSale(id);
-            return Ok(new { success = true });
+        _service.FinishSale(id);
+         return Ok(new { success = true });
+    }            
+        
 
-        }catch(Exception ex)
-        {
-            return BadRequest(new { success = false, error = ex.Message });
-        }
-    }
-
-    [HttpPost("{id}/ cancel")]
+    [HttpPost("{id}/cancel")]
     public IActionResult Cancel(string id)
     {
-        try
-        {
-            _service.CancelSale(id);
-            return Ok(new { success = true });
-        }catch(Exception ex)
-        {
-            return BadRequest(new { success = false, error = ex.Message });
-        }
+        _service.CancelSale(id);
+        return Ok(new { success = true });
     }
-
 }
