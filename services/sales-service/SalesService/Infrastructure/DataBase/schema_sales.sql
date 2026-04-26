@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS sales_items (
     product_id VARCHAR(26),
     quantity INT,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
 
     CONSTRAINT fk_sale
         FOREIGN KEY (sale_id)
@@ -24,4 +24,4 @@ ON sales(client_id);
 
 -- Buscar itens de uma venda
 CREATE INDEX IF NOT EXISTS idx_sale_items_sale_id
-ON sale_items(sale_id);
+ON sales_items(sale_id);

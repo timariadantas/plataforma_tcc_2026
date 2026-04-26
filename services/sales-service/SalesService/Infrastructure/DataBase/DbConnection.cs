@@ -12,7 +12,7 @@ public static class DbConnection
         var password = Environment.GetEnvironmentVariable("DB_PASSWORD") ??"postgres";
 
         var connectionString = 
-            $"Host={host}; Port={port}; Username={username}; Passaword={password}; Database={database}";
+            $"Host={host}; Port={port}; Username={username}; Password={password}; Database={database}";
 
         return new NpgsqlConnection(connectionString);
 
