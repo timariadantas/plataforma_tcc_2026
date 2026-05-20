@@ -212,3 +212,19 @@ def delete_product(product_id):
     except Exception as e:
         logger.error(f"Error deleting product: {e}")
         return jsonify({"error": str(e)}), 400
+@product_blueprint.route("/products/<product_id>/decrease-stock", methods=["PATCH"])
+def decrease_stock(product_id):
+    try:
+        body = request.json
+        quantity = body["quantity"]
+
+        service.decrease_stock(product_id, quantity)
+
+        return jsonify({
+            "message": "Stock updated"
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": str(e)
+        }), 400

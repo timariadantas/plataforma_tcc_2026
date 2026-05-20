@@ -42,9 +42,8 @@ class ProductService:
 
     def update_product(self, product_id, dto):
         logger.info(f"Updating product: {product_id}")
-        
-        entity = ProductMapper.to_entity(dto)
-        update_data = entity.to_dict()
+    
+        update_data = dto.dict()
         update_data["updated_at"] = datetime.now()
 
         logger.info(f"Product updated successfully: {product_id}")
@@ -55,3 +54,11 @@ class ProductService:
         self.repository.delete(product_id)
         
         logger.info(f"Product deleted successfully: {product_id}")
+        
+    def decrease_stock(self, product_id, quantity):
+        logger.info(f"Decreasing stock:{product_id}")
+         
+        if quantity <= 0:
+            raise ValueError("Quantity must be greater than zero")
+        self.repository.decrease_stock(product_id, quantity)
+        logger.info("Stock update sucessfully")

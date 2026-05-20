@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 from infrastructure.logging.logger import logger
 from infrastructure.database.mongo_connection import get_database
-
+from datetime import datetime;
 
 
 
@@ -63,4 +63,22 @@ class ProductRepository:
         )
         if result.matched_count == 0:
             logger.warning(f"Delete failed, product not found: {product_id}")
+            raise ValueError("Product not found")
+        
+    def decrease_stock(self, product_id, quantity):
+        product = self.get_by_id(product_id)
+        
+        if product["quantity"] < quantity:
+            logger.warning("Insufficient stock")
+            raise ValueError("Insufficient stock")
+        
+        result = self.collection.update_one(
+            { "_id" : product_id},
+            {
+                "$inc" : {"quantity": -quantity},
+                "$set" : {"updated_at": datetime.now()}
+            }
+        
+        )
+        if result.matched_count == 0:
             raise ValueError("Product not found")
