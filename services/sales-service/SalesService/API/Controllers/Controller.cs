@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using SalesService.Application.DTO.Request;
+using SalesService.Application.DTO.Response;
 using SalesService.Application.Mapper;
 using SalesService.Application.Repositories;
 using System;
+
 
 namespace SalesService.Api.Controllers;
 
@@ -11,48 +13,202 @@ namespace SalesService.Api.Controllers;
 public class SalesController : ControllerBase
 {
     private readonly ISaleService _service;
+    private readonly ILogger<SalesController> _logger;
 
-    public SalesController(ISaleService service)
+    public SalesController(ISaleService service, ILogger<SalesController>logger)
     {
         _service = service;
+        _logger = logger;
 
     }
 
     [HttpPost]
     public IActionResult Create([FromBody] CreateSaleRequest request)
     {
+        _logger.LogInformation(
+            "Creating sale for client {ClientId}", request.ClientId);
+
         var sale = _service.CreateSale(request.ClientId);
         var response = SaleMapper.ToResponse(sale);
-        return Created ("", new { success = true, data = response });
+
+        var result = new ApiResponse<SaleResponse>
+        {
+            Message = "Sale created successfully",
+            Elapsed = 0,
+            Data = response
+        };
+
+        return Created("", result);
     }
 
     [HttpGet("{id}")]
     public IActionResult GetById(string id)
     {
-        var sale = _service.GetById(id);
+        _logger.LogInformation(
+            "Fetching sale {SaleId}", id);
+
+        var sale =  _service.GetById(id);
         var response = SaleMapper.ToResponse(sale);
-        return Ok (new { success = true, data = response });
+        
+        var result = new ApiResponse<SaleResponse>
+        {
+            Message = "Sale found",
+            Elapsed = 0,
+            Data = response
+        };
+
+        return Ok(result);
     }
 
     [HttpPost("{id}/items")]
-    public IActionResult AddItem(string id, [FromBody] AddItemRequest request)
+    public async Task<IActionResult> AddItem(string id, 
+    [FromBody] AddItemRequest request)
     {
-        _service.AddItem(id, request.ProductId,request.Quantity);
-        return Ok(new { success = true });
+        _logger.LogInformation(
+            "Adding product {ProductId} to sale {SaleId}", request.ProductId, id);
+
+        await _service.AddItem(
+            id, 
+            request.ProductId,
+            request.Quantity);
+
+       var result = new ApiResponse<object>
+    {
+        Message = "Item added successfully",
+        Elapsed = 0,
+        Data = null
+    };
+
+    return Ok(result);
+    }
+
+    [HttpPut("{saleId}/items/{productId}")]
+    public async Task<IActionResult> UpdateItem(
+        string saleId,
+        string productId,
+        string id,
+        [FromBody] AddItemRequest request)
+    {
+        _logger.LogInformation(
+            "Updating product {ProductId} in sale {SaleId}", request.ProductId, id); 
+
+        await _service.UpdateItem(
+            saleId,
+            productId,
+            request.Quantity);
+
+        return Ok(new
+        {
+            success = true,
+            message = "Item updated"
+        });
     }
 
     [HttpPost("{id}/finish")]
-    public IActionResult Finish(string id)
+    public async Task <IActionResult> Finish(string id)
     {
-        _service.FinishSale(id);
-         return Ok(new { success = true });
+        _logger.LogInformation(
+            "Finishing sale {SaleId}", id);
+
+        var totals = await _service.FinishSale(id);
+
+        var result = new ApiResponse<object>
+    {
+        Message = "Sale finished successfully",
+        Elapsed = 0,
+        Data = null
+    };
+
+    return Ok(result);
     }            
         
 
     [HttpPost("{id}/cancel")]
     public IActionResult Cancel(string id)
     {
+        _logger.LogInformation(
+            "Canceling sale {SaleId}", id);
+
         _service.CancelSale(id);
-        return Ok(new { success = true });
+        
+        var result = new ApiResponse<object>
+    {
+        Message = "Sale canceled successfully",
+        Elapsed = 0,
+        Data = null
+    };
+
+    return Ok(result);
     }
+
+    [HttpGet("product/{productId}")]
+    public async Task<IActionResult>GetByProduct(string productId)
+    {
+         _logger.LogInformation(
+            "Fetching sales by product {ProductId}", productId);
+
+        var sales = await _service.GetByProductId(productId);
+
+        var response = sales
+            .Select(SaleMapper.ToResponse)
+            .ToList();
+
+        var result = new ApiResponse<List<SaleResponse>>
+    {
+        Message = "Sales found",
+        Elapsed = 0,
+        Data = response
+    };
+
+    return Ok(result);
+    }
+
+    [HttpGet("status/{status}")]
+    public async Task<IActionResult> GetByStatus(string status)
+    {
+        _logger.LogInformation(
+            "Fetching sales by status {Status}", status);
+
+        var sales = await _service.GetByStatus(status);
+
+        var response = sales
+        .Select(SaleMapper.ToResponse)
+        .ToList();
+
+        var result = new ApiResponse<List<SaleResponse>>
+    {
+        Message = "Sales found",
+        Elapsed = 0,
+        Data = response
+    };
+
+    return Ok(result);
+    }
+
+    [HttpGet("product/{productId}/totals")]
+    public async Task<IActionResult> GetTotals(string productId)
+        {
+             _logger.LogInformation(
+            "Fetching totals for product {ProductId}",productId);
+
+            var totals = 
+                await _service.GetTotalSalesByProductAndStatus(productId);
+
+            var result =
+                new ApiResponse<Dictionary<Domain.Enums.SaleStatus, int>>
+            {
+                Message = "Totals found",
+                Elapsed = 0,
+                Data = totals
+            };
+
+        return Ok(result); 
+        
+        }
+
+
+
 }
+
+//ApiResponse<object>?
+//endpoints não retorna objeto de venda, só confirma a ação.

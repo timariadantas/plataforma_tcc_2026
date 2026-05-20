@@ -1,16 +1,21 @@
 using System.Net;
 using System.Text.Json;
 using SalesService.Domain.Exceptions;
+using SalesService.Application.DTO.Response;
 
 namespace SalesService.API.Middlewares;
 
 public class ExceptionMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly ILogger<ExceptionMiddleware> _logger;
     
-    public ExceptionMiddleware(RequestDelegate next)
+    public ExceptionMiddleware(
+        RequestDelegate next,
+        ILogger<ExceptionMiddleware> logger)
     {
         _next = next;
+        _logger = logger;
     }
 
     public async Task Invoke (HttpContext context)
@@ -21,6 +26,10 @@ public class ExceptionMiddleware
         }
         catch(Exception ex)
         {
+            _logger.LogError(
+                ex,
+                "Unhandled exception: {Message}",
+                ex.Message);
             await HandleException(context, ex);
         }
     }
@@ -47,10 +56,12 @@ public class ExceptionMiddleware
                 statusCode = HttpStatusCode.Unauthorized;
                 break;
         }
-        var response = new
+          var response = new ApiResponse<object>
         {
-            sucess = false,
-            error = ex.Message
+            Message = "Request failed",
+            Elapsed = 0,
+            Error = ex.Message,
+            Data = null
         };
 
         var json = JsonSerializer.Serialize(response);
