@@ -1,7 +1,20 @@
-.env
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.lscache
+
+# Python
 venv/
 __pycache__/
 *.pyc
+
+# Env files
+.env
+
+# VS Code
 .vscode/
-obj/
-bin/
+
+# Logs
+*.log
