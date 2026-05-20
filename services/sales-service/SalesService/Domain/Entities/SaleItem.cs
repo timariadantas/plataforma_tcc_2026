@@ -5,13 +5,15 @@ public class SaleItem
     public string SaleId{get; private set;}
     public string ProductId{get; private set;}
     public int Quantity {get; private set;}
+    public decimal UnitPrice {get; private set;}
+    public decimal Total => Quantity * UnitPrice;
 
     public DateTime CreatedAt{get; private set;}
     public DateTime UpdatedAt{get; private set;}
 
     private SaleItem(){}
 
-    public SaleItem (string saleId, string productId, int quantity)
+    public SaleItem (string saleId, string productId, int quantity, decimal unitPrice)
     {
          if (string.IsNullOrEmpty(productId))
             throw new Exception("ProductId is required");
@@ -22,6 +24,7 @@ public class SaleItem
         SaleId = saleId;
         ProductId = productId;
         Quantity = quantity;
+        UnitPrice = unitPrice;
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
 
@@ -31,6 +34,7 @@ public class SaleItem
         string saleId,
         string productId,
         int quantity,
+        decimal unitPrice,
         DateTime createdAt,
         DateTime updatedAt)
     {
@@ -39,6 +43,7 @@ public class SaleItem
             SaleId = saleId,
             ProductId = productId,
             Quantity = quantity,
+            UnitPrice = unitPrice,
             CreatedAt = createdAt,
             UpdatedAt = updatedAt
         };

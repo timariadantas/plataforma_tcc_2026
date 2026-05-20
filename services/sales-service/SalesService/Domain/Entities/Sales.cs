@@ -52,6 +52,7 @@ public class Sale
     public void LoadItem(
         string productId,
         int quantity,
+        decimal unitPrice,
         DateTime createdAt,
         DateTime updatedAt)
     {
@@ -59,6 +60,7 @@ public class Sale
             Id,
             productId,
             quantity,
+            unitPrice,
             createdAt,
             updatedAt
         );
@@ -68,14 +70,14 @@ public class Sale
 
 
         // regra de negócio (Venda)
-    public void AddItem(string productId, int quantity)
+    public void AddItem(string productId, int quantity, decimal unitPrice)
     {
         if (Status == SaleStatus.Done || Status == SaleStatus.Canceled)
             throw new Exception ("Sale cannot be changed.");
         if (quantity <= 0)
             throw new Exception("Quantity invalid.");
 
-        var item = new SaleItem(Id, productId, quantity);
+        var item = new SaleItem(Id, productId, quantity, unitPrice);
         _items.Add(item);
 
         Status = SaleStatus.Progress;
@@ -103,7 +105,19 @@ public class Sale
         UpdatedAt = DateTime.UtcNow;
     }
 
-    
+    public decimal Total => _items.Sum(x => x.Total);
 
+    public void UpdateItem (string productId, int quantity)
+    {
+        if(Status == SaleStatus.Done || Status == SaleStatus.Canceled)
+            throw new Exception ("Sale cannot be changed.");
 
+        var item = _items.FirstOrDefault(x => x.ProductId == productId);
+
+        if (item == null )
+            throw new Exception("Item not found.");
+
+        item.UpdateQuantity(quantity);
+        UpdatedAt = DateTime.UtcNow;
+    }
 }
