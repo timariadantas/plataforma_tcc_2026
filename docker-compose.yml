@@ -7,7 +7,7 @@ services:
     env_file:
       - .env
     environment:
-      ORACLE_PASSWORD: ${DB_PASSWORD}
+      ORACLE_PASSWORD: ${CLIENT_DB_PASSWORD}
     restart: always
 
   mongo:
@@ -21,9 +21,25 @@ services:
     build: ./services/product-service
     container_name: product_service
     ports:
-      - "5000:5000"
+      - "5001:5000"
     depends_on:
       - mongo
     environment:
       - MONGO_URI=mongodb://mongo_db:27017
-        
+  
+
+  postgres-sales:
+    image: postgres:16
+    container_name: postgres-sales
+    ports:
+    - "5432:5432"
+    env_file:
+    - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./services/sales-service/SalesService/Infrastructure/DataBase/schema_sales.sql:/docker-entrypoint-initdb.d/schema_sales.sql
+
+    restart: always
