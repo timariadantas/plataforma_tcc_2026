@@ -1,15 +1,16 @@
 CREATE TABLE IF NOT EXISTS sales (
     id VARCHAR(26) PRIMARY KEY,
     client_id VARCHAR(26) NOT NULL,
-    status INT NOT NULL,
+    status VARCHAR(50) NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS sales_items (
+CREATE TABLE IF NOT EXISTS sale_items (
     sale_id VARCHAR(26),
     product_id VARCHAR(26),
     quantity INT,
+    unit_price NUMERIC(18,2),
     created_at TIMESTAMP,
     updated_at TIMESTAMP,
 
@@ -24,4 +25,4 @@ ON sales(client_id);
 
 -- Buscar itens de uma venda
 CREATE INDEX IF NOT EXISTS idx_sale_items_sale_id
-ON sales_items(sale_id);
+ON sale_items(sale_id);

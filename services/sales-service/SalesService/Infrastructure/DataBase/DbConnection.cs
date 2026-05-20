@@ -5,17 +5,24 @@ public static class DbConnection
 {
     public static NpgsqlConnection GetConnection()
     {
-        var host = Environment.GetEnvironmentVariable("DB_HOST") ??"localhost";
-        var port = Environment.GetEnvironmentVariable("DB_PORT") ??"5432";
-        var database = Environment.GetEnvironmentVariable("DB_NAME") ??"sales_db";
-        var username = Environment.GetEnvironmentVariable("DB_USER") ??"postgres";
-        var password = Environment.GetEnvironmentVariable("DB_PASSWORD") ??"postgres";
+        var host = Environment.GetEnvironmentVariable("POSTGRES_HOST") ;
+        var port = Environment.GetEnvironmentVariable("POSTGRES_PORT") ;
+        var database = Environment.GetEnvironmentVariable("POSTGRES_NAME") ;
+        var username = Environment.GetEnvironmentVariable("POSTGRES_USER") ;
+        var password = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD") ;
 
-        var connectionString = 
-            $"Host={host}; Port={port}; Username={username}; Password={password}; Database={database}";
+        if (string.IsNullOrWhiteSpace(host) ||
+            string.IsNullOrWhiteSpace(port) ||
+            string.IsNullOrWhiteSpace(database) ||
+            string.IsNullOrWhiteSpace(username) ||
+            string.IsNullOrWhiteSpace(password))
+        {
+            throw new Exception("Variáveis de ambiente do PostgreSQL não configuradas.");
+        }
+
+        var connectionString =
+            $"Host={host};Port={port};Username={username};Password={password};Database={database}";
 
         return new NpgsqlConnection(connectionString);
-
-
     }
 }

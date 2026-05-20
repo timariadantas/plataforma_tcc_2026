@@ -3,13 +3,24 @@ using SalesService.Domain.Entities;
 using SalesService.Domain.Enums;
 using SalesService.Domain.Repositories;
 using SalesService.Infrastructute.DataBase;
+using Microsoft.Extensions.Logging;
 
 namespace SalesService.Infrastructute.Repositories;
 
 public class SaleRepository : ISaleRepository
+
 {
+    private readonly ILogger<SaleRepository> _logger;
+        
+    public SaleRepository(ILogger<SaleRepository> logger)
+    {
+        _logger = logger;
+    }
     public void Save(Sale sale)
     {
+        _logger.LogInformation(
+            "Saving sale {SaleId} in database", sale.Id);
+
         using var connection = DbConnection.GetConnection();
         connection.Open();
 
@@ -22,7 +33,7 @@ public class SaleRepository : ISaleRepository
             {
                 command.Parameters.AddWithValue("id",sale.Id );
                 command.Parameters.AddWithValue("client_id",sale.ClientId );
-                command.Parameters.AddWithValue("status",sale.Status);
+                command.Parameters.AddWithValue("status",sale.Status.ToString());
                 command.Parameters.AddWithValue("created_at",sale.CreatedAt);
                 command.Parameters.AddWithValue("updated_at",sale.UpdatedAt);
 
@@ -32,13 +43,14 @@ public class SaleRepository : ISaleRepository
             foreach (var item in sale.Items)
             {
                 using var command = new NpgsqlCommand(@"
-                INSERT INTO sales_items
-                (sale_id, product_id, quantity, created_at, updated_at)
-                VALUES(@sale_id, @product_id, @quantity, @created_at, @updated_at)", connection, transaction);
+                INSERT INTO sale_items
+                (sale_id, product_id, quantity,unit_price, created_at, updated_at)
+                VALUES(@sale_id, @product_id, @quantity,@unit_price, @created_at, @updated_at)", connection, transaction);
 
                 command.Parameters.AddWithValue("sale_id",item.SaleId);
                 command.Parameters.AddWithValue("product_id",item.ProductId);
                 command.Parameters.AddWithValue("quantity",item.Quantity);
+                command.Parameters.AddWithValue("unit_price",item.UnitPrice);
                 command.Parameters.AddWithValue("created_at",item.CreatedAt);
                 command.Parameters.AddWithValue("updated_at",item.UpdatedAt);
 
@@ -53,12 +65,15 @@ public class SaleRepository : ISaleRepository
         }
             }
 
-        public Sale GetById(string id)
+    public Sale? GetById(string id)
     {
+        _logger.LogInformation(
+            "Fetching sale {SaleId} from database", id);
+
         using var connection = DbConnection.GetConnection();
         connection.Open();
 
-        Sale sale = null;
+        Sale? sale = null;
         // buscar a venda
         using (var command = new NpgsqlCommand(@"
             SELECT id, client_id, status, created_at, updated_at
@@ -69,20 +84,23 @@ public class SaleRepository : ISaleRepository
 
             using var reader = command.ExecuteReader();
             if(!reader.Read())
+            {
+                _logger.LogWarning(
+                    "Sale {SaleId} not found in database", id);
                 return null;
-            
+            }
             sale = Sale.Rehydrate ( 
                 reader.GetString(0),
                 reader.GetString(1),
-                (SaleStatus)reader.GetInt32(2),
+                Enum.Parse<SaleStatus>(reader.GetString(2)),
                 reader.GetDateTime(3),
                 reader.GetDateTime(4)
             );
         }
         // buscar itens 
         using (var command = new NpgsqlCommand(@"
-            SELECT product_id, quantity, created_at, updated_at
-            FROM sales_items
+            SELECT product_id, quantity, unit_price, created_at, updated_at
+            FROM sale_items
             WHERE sale_id = @sale_id", connection))
         {
             command.Parameters.AddWithValue("sale_id", id);
@@ -93,33 +111,100 @@ public class SaleRepository : ISaleRepository
                 sale.LoadItem(
                     reader.GetString(0),
                     reader.GetInt32(1),
-                    reader.GetDateTime(2),
-                    reader.GetDateTime(3)
+                    reader.GetDecimal(2),
+                    reader.GetDateTime(3),
+                    reader.GetDateTime(4)
                 );
             }
         }
         return sale;
     }
-
-    public void Update(Sale sale)
+    public void AddItem (SaleItem item)
     {
+        _logger.LogInformation(
+            "Saving item {ProductId} for sale {SaleId}",item.ProductId, item.SaleId);
+
         using var connection = DbConnection.GetConnection();
         connection.Open();
 
-        using var command = new NpgsqlCommand(@"
-            UPDATE sales
-            SET status = @status,
-                updated_at = @updated_at
-            WHERE id = @id", connection);
-               
-            command.Parameters.AddWithValue("id", sale.Id);
-            command.Parameters.AddWithValue("status",(int)sale.Status);
-            command.Parameters.AddWithValue("updated_at", sale.UpdatedAt);
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            using var command = new NpgsqlCommand(@"
+            INSERT INTO sale_items
+            (sale_id, product_id, quantity, unit_price, created_at, updated_at)
+            VALUES
+            (@sale_id, @product_id, @quantity,@unit_price, @created_at, @updated_at)", connection, transaction);
+
+            command.Parameters.AddWithValue("sale_id", item.SaleId);
+            command.Parameters.AddWithValue("product_id", item.ProductId);
+            command.Parameters.AddWithValue("quantity", item.Quantity);
+            command.Parameters.AddWithValue("unit_price", item.UnitPrice);
+            command.Parameters.AddWithValue("created_at", item.CreatedAt);
+            command.Parameters.AddWithValue("updated_at", item.UpdatedAt);
 
             command.ExecuteNonQuery();
+            transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
 
     }
+    public void Update(Sale sale)
+    {
+        _logger.LogInformation(
+            "Updating sale {SaleId} in database", sale.Id);
 
+        using var connection = DbConnection.GetConnection();
+        connection.Open();
+
+        using var transaction = connection.BeginTransaction();
+        // atualiza a venda
+        try
+        {
+            using (var command = new NpgsqlCommand(@"
+                UPDATE sales
+                SET status = @status,
+                    updated_at = @updated_at
+                WHERE id = @id", connection, transaction))
+            {
+                command.Parameters.AddWithValue("id", sale.Id);
+                command.Parameters.AddWithValue("status",sale.Status.ToString());
+                command.Parameters.AddWithValue("updated_at", sale.UpdatedAt);
+
+                command.ExecuteNonQuery();
+        
+        }
+        // atualiza os items
+        foreach (var item in sale.Items)
+        {
+            using var command = new NpgsqlCommand(@"
+                UPDATE sale_items
+                SET quantity = @quantity,
+                    updated_at = @updated_at
+                WHERE sale_id = @sale_id
+                AND product_id = @product_id", connection , transaction);
+
+            command.Parameters.AddWithValue("sale_id", item.SaleId);
+            command.Parameters.AddWithValue("product_id", item.ProductId);
+            command.Parameters.AddWithValue("quantity", item.Quantity);
+            command.Parameters.AddWithValue("updated_at", item.UpdatedAt);
+
+            command.ExecuteNonQuery();
+        }
+
+            transaction.Commit();
+        }
+        catch
+        {
+             transaction.Rollback();
+        throw;
+
+        }
+    }
     public List<Sale> GetByProductId(string productId)
     {
          using var connection = DbConnection.GetConnection();
@@ -142,7 +227,7 @@ public class SaleRepository : ISaleRepository
             var sale = Sale.Rehydrate(
                 reader.GetString(0),
                 reader.GetString(1),
-                (SaleStatus)reader.GetInt32(2),
+                Enum.Parse<SaleStatus>(reader.GetString(2)),
                 reader.GetDateTime(3),
                 reader.GetDateTime(4)
             );
@@ -164,8 +249,7 @@ public class SaleRepository : ISaleRepository
             FROM sales
             WHERE status = @status", connection);
 
-        command.Parameters.AddWithValue("status", (int)status);
-
+        command.Parameters.AddWithValue("status", status.ToString());
         using var reader = command.ExecuteReader();
 
         while (reader.Read())
@@ -173,7 +257,7 @@ public class SaleRepository : ISaleRepository
             var sale = Sale.Rehydrate(
                 reader.GetString(0),
                 reader.GetString(1),
-                (SaleStatus)reader.GetInt32(2),
+                Enum.Parse<SaleStatus>(reader.GetString(2)),
                 reader.GetDateTime(3),
                 reader.GetDateTime(4)
             );
@@ -203,7 +287,7 @@ public class SaleRepository : ISaleRepository
 
         while (reader.Read())
         {
-            var status = (SaleStatus)reader.GetInt32(0);
+            var status = Enum.Parse<SaleStatus>(reader.GetString(0));
             var count = reader.GetInt32(1);
 
             result[status] = count;
