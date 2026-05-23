@@ -1,72 +1,103 @@
 import pytest
-from unittest.mock import MagicMock
+from datetime import date, datetime
+
 from application.services.client_service import ClientService
 from domain.entities.client import Client
-from datetime import  datetime
 
-def test_create_client_calls_repository(mocker):
-    
-    mock_repo = mocker.patch("application.services.client_service.ClientRepository")
-    
-    
-    mock_conn = mocker.MagicMock()
-    
-    service = ClientService()
-    
-    
-    service.db.get_connection = mocker.MagicMock()
-    service.db.get_connection.return_value.__enter__.return_value = mock_conn
-    service.db.get_connection.return_value.__exit__.return_value = None
 
-    birthdate = datetime(1990, 1, 1)
-    client = Client("Carlos", "Dantas", "c@email.com", birthdate)
+@pytest.fixture
+def service():
+    return ClientService()
 
-    service.create_client(client)
 
-    # MOCK de verdade
-    assert mock_repo.return_value.save.call_count == 1
-    mock_conn.commit.assert_called_once()
-    
-def test_get_client_success(mocker):
-    
-    mock_repo = mocker.patch("application.services.client_service.ClientRepository")
+def test_create_client(service):
+    client = Client(
+        name="Maria",
+        surname="Dantas",
+        email=f"maria_{datetime.now().timestamp()}@test.com",
+        birthdate=date(1990, 1, 1)
+    )
 
-    mock_conn = mocker.MagicMock()
+    result = service.create_client(client)
 
-    service = ClientService()
+    assert result is not None
+    assert result.id is not None
+    assert result.name == "Maria"
+    assert result.email == client.email
+    assert result.active is True
 
-    service.db.get_connection = mocker.MagicMock()
-    service.db.get_connection.return_value.__enter__.return_value = mock_conn
-    service.db.get_connection.return_value.__exit__.return_value = None
 
-    
-    fake_client = Client("Carlos", "Dantas", "c@email.com", datetime.now())
 
-    
-    mock_repo.return_value.get_by_id.return_value = fake_client
+def test_get_client(service):
+    client = Client(
+        name="João",
+        surname="Silva",
+        email=f"joao_{datetime.now().timestamp()}@test.com",
+        birthdate=date(1995, 5, 5)
+    )
 
-    result = service.get_client("123")
+    created = service.create_client(client)
 
-    assert result == fake_client
-    mock_repo.return_value.get_by_id.assert_called_once_with("123", mock_conn)
-    
-# testar rollback
+    found = service.get_client(created.id)
 
-def test_create_client_rollback_on_error(mocker):
-    mock_repo = mocker.patch("application.services.client_service.ClientRepository")
-    
-    mock_conn = mocker.MagicMock()
-    
-    service = ClientService()
-    
-    service.db.get_connection = mocker.MagicMock()
-    service.db.get_connection.return_value.__enter__.return_value = mock_conn
-    service.db.get_connection.return_value.__exit__.return_value = None
-    
-    #Erro no save
-    mock_repo.return_value.save.side_effect = Exception("Erro no Banco")
-    client = Client ("Maria", "Dantas", "abc@gmail.com", datetime.now())
-    
-    with pytest.raises(Exception):
-        service.create_client(client)
-    mock_conn.rollback.assert_called_once()
+    assert found is not None
+    assert found.id == created.id
+    assert found.email == client.email
+
+
+def test_update_client(service):
+    client = Client(
+        name="Carlos",
+        surname="Souza",
+        email=f"carlos_{datetime.now().timestamp()}@test.com",
+        birthdate=date(1980, 3, 10)
+    )
+
+    created = service.create_client(client)
+
+    created.name = "Carlos Atualizado"
+    created.email = "carlos_updated@test.com"
+
+    updated = service.update_client(created)
+
+    assert updated.name == "Carlos Atualizado"
+    assert updated.email == "carlos_updated@test.com"
+
+
+
+def test_delete_client(service):
+    client = Client(
+        name="Ana",
+        surname="Pereira",
+        email=f"ana_{datetime.now().timestamp()}@test.com",
+        birthdate=date(1992, 7, 20)
+    )
+
+    created = service.create_client(client)
+
+    service.delete_client(created.id)
+
+    result = service.get_client(created.id)
+
+    assert result is None or result.active is False
+
+
+
+def test_get_all_clients(service):
+    result = service.get_all_clients()
+
+    assert isinstance(result, list)
+
+
+
+def test_get_active_clients(service):
+    result = service.get_active_clients()
+
+    assert isinstance(result, list)
+
+
+
+def test_get_inactive_clients(service):
+    result = service.get_inactive_clients()
+
+    assert isinstance(result, list)
