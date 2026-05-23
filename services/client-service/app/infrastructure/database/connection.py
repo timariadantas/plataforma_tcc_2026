@@ -1,15 +1,11 @@
-from venv import logger
-
-from dotenv import load_dotenv
-from pathlib import Path
-
-env_path = Path(__file__).resolve().parents[5] / ".env"
-load_dotenv(env_path)
-
 import os
 import oracledb
 from contextlib import contextmanager
+from dotenv import load_dotenv
 from infrastructure.logger.logger import get_logger
+
+# Apenas para ambiente local (fora do Docker)
+load_dotenv()
 
 logger = get_logger("DatabaseConnection")
 
@@ -22,16 +18,12 @@ class DatabaseConnection:
         self.host = os.getenv("CLIENT_DB_HOST")
         self.port = os.getenv("CLIENT_DB_PORT")
         self.service_name = os.getenv("CLIENT_DB_SERVICE")
-        
-        print("CLIENT_DB_USER:", self.user)
-        print("CLIENT_DB_PASSWORD:", self.password)
-        print("CLIENT_DB_HOST:", self.host)
-        print("CLIENT_DB_PORT:", self.port)
-        print("CLIENT_DB_SERVICE:", self.service_name)
-        
+
+        logger.info("Carregando variáveis de ambiente...")
+
         if not all([self.user, self.password, self.host, self.port, self.service_name]):
             logger.error("Variáveis de ambiente não configuradas corretamente")
-            raise ValueError("Erro de configuração: verifique o arquivo .env")
+            raise ValueError("Erro de configuração: verifique as variáveis de ambiente")
 
     @contextmanager
     def get_connection(self):
@@ -50,12 +42,13 @@ class DatabaseConnection:
             )
 
             yield conn
-            
 
         except Exception as e:
+            logger.error(f"Erro ao conectar ou executar operação: {str(e)}")
+
             if conn:
                 conn.rollback()
-            logger.error(f"Erro ao conectar ou executar operação: {str(e)}")
+
             raise
 
         finally:
