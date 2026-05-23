@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime , date , timezone
 import uuid
 
 class Client:
-    def __init__(self, name:str, surname:str, email:str, birthdate:datetime):
+    def __init__(self, name:str, surname:str, email:str, birthdate:date):
         self._validate(name, surname, email, birthdate)
         self.id = str(uuid.uuid4())
         self.name = name
@@ -11,7 +11,7 @@ class Client:
         self.birthdate = birthdate
         self.active = True
         
-        now = datetime.now()
+        now = datetime.now((timezone.utc))
         self.created_at = now
         self.updated_at = now
         
@@ -23,7 +23,7 @@ class Client:
             raise ValueError("Sobrenome é obrigatório")
         if not email or "@" not in email:
             raise ValueError("Email inválido")
-        if not isinstance(birthdate, datetime):
+        if not isinstance(birthdate, date):
             raise ValueError("Data de nascimento inválida")
     
 # Comportamento de atualização e delete(lógico)
@@ -32,14 +32,14 @@ class Client:
         self.name = name
         self.surname = surname
         self.email = email
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now((timezone.utc))
         
-    def disabled(self):
+    def disable(self):
         if not self.active:
             raise ValueError("Cliente desativado")
         
         self.active = False
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now((timezone.utc))
 
     def to_dict(self):
         return {
@@ -49,7 +49,7 @@ class Client:
             "email": self.email,
             "birthdate": str(self.birthdate),
             "active": self.active,
-            "created_at": str(self.created_at),
+            "created_at": str(self.created_at.isoformat()),
             "updated_at": str(self.updated_at)
     }
         
