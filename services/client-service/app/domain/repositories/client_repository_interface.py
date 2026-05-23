@@ -18,11 +18,11 @@ class ClientRepositoryInterface(ABC):
         pass 
     
     @abstractmethod
-    def get_all_active(self, conn):
+    def get_all_active(self):
         pass
     
     @abstractmethod
-    def get_all_inactive(self, conn):
+    def get_all_inactive(self):
         pass
     
     @abstractmethod
