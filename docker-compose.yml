@@ -1,4 +1,5 @@
 services:
+
   oracle-db:
     image: gvenzl/oracle-xe
     container_name: oracle-db
@@ -8,38 +9,86 @@ services:
       - .env
     environment:
       ORACLE_PASSWORD: ${CLIENT_DB_PASSWORD}
+    volumes:
+      - ./services/client-service/app/infrastructure/database/init.sql:/opt/oracle/scripts/startup/init.sql:ro
     restart: always
 
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'SELECT 1 FROM dual;' | sqlplus -s system/${CLIENT_DB_PASSWORD}@//localhost:1521/XE || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+
   mongo:
-    image: mongo
+    image: mongo:7
     container_name: mongo_db
     ports:
       - "27017:27017"
     restart: always
 
-  product-service:
-    build: ./services/product-service
-    container_name: product_service
-    ports:
-      - "5001:5000"
-    depends_on:
-      - mongo
-    environment:
-      - MONGO_URI=mongodb://mongo_db:27017
-  
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand({ ping: 1 })"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
 
   postgres-sales:
     image: postgres:16
     container_name: postgres-sales
     ports:
-    - "5432:5432"
+      - "5432:5432"
     env_file:
-    - .env
+      - .env
     environment:
       POSTGRES_DB: ${POSTGRES_NAME}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - ./services/sales-service/SalesService/Infrastructure/DataBase/schema_sales.sql:/docker-entrypoint-initdb.d/schema_sales.sql
-
     restart: always
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+
+  client-service:
+    build: ./services/client-service
+    container_name: client_service
+    ports:
+      - "5000:5000"
+    environment:
+      CLIENT_DB_HOST: oracle-db
+      CLIENT_DB_PORT: ${CLIENT_DB_PORT}
+      CLIENT_DB_USER: ${CLIENT_DB_USER}
+      CLIENT_DB_PASSWORD: ${CLIENT_DB_PASSWORD}
+      CLIENT_DB_SERVICE: ${CLIENT_DB_SERVICE}
+
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+
+  product-service:
+    build: ./services/product-service
+    container_name: product_service
+    ports:
+      - "5001:5000"
+
+    environment:
+      MONGO_URI: mongodb://mongo_db:27017
+
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+    restart: unless-stopped
