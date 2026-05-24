@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 class ProductRepositoryInterface(ABC):
 
     @abstractmethod
-    def create(self, product):
+    def save(self, product):
         pass
 
     @abstractmethod
