@@ -1,4 +1,5 @@
 namespace SalesService.Domain.Entities;
+using SalesService.Domain.Exceptions;
 
 public class SaleItem
 {
@@ -16,10 +17,10 @@ public class SaleItem
     public SaleItem (string saleId, string productId, int quantity, decimal unitPrice)
     {
          if (string.IsNullOrEmpty(productId))
-            throw new Exception("ProductId is required");
+            throw new ValidationException("ProductId is required");
 
         if (quantity <= 0)
-            throw new Exception("Quantity invalid");
+            throw new ValidationException("Quantity invalid");
             
         SaleId = saleId;
         ProductId = productId;
@@ -55,7 +56,7 @@ public class SaleItem
     public void UpdateQuantity( int quantity)
     {
         if (quantity <= 0)
-            throw new Exception("Quantity invalid.");
+            throw new ValidationException("Quantity invalid.");
         
         Quantity = quantity;
         UpdatedAt = DateTime.UtcNow;

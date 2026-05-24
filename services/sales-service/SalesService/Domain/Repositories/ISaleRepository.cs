@@ -11,6 +11,6 @@ public interface ISaleRepository
     List<Sale> GetByStatus(SaleStatus status);
     Dictionary<SaleStatus, int> GetTotalSalesByProductAndStatus(string productId);
 
-    void AddItem(SaleItem item);
+   
 }
 

@@ -1,5 +1,6 @@
 using SalesService.Domain.Enums;
 using SalesService.Domain.ValueObjects;
+using SalesService.Domain.Exceptions;
 
 namespace SalesService.Domain.Entities;
 
@@ -23,7 +24,7 @@ public class Sale
 
     public Sale(string clientId){
         if (string.IsNullOrEmpty(clientId))
-            throw new Exception("Client is required.");
+            throw new ValidationException("Client is required.");
 
         Id = Ulid.New();
         ClientId = clientId;
@@ -73,9 +74,9 @@ public class Sale
     public void AddItem(string productId, int quantity, decimal unitPrice)
     {
         if (Status == SaleStatus.Done || Status == SaleStatus.Canceled)
-            throw new Exception ("Sale cannot be changed.");
+            throw new BusinessException ("Sale cannot be changed.");
         if (quantity <= 0)
-            throw new Exception("Quantity invalid.");
+            throw new ValidationException("Quantity invalid.");
 
         var item = new SaleItem(Id, productId, quantity, unitPrice);
         _items.Add(item);
@@ -88,10 +89,10 @@ public class Sale
     public void Finish()
     {
         if (!_items.Any())
-            throw new Exception("Sale has no items");
+            throw new BusinessException("Sale has no items");
         
         if(Status == SaleStatus.Canceled)
-            throw new Exception("Sale Canceled");
+            throw new BusinessException("Sale Canceled");
 
         Status = SaleStatus.Done;
         UpdatedAt = DateTime.UtcNow;
@@ -100,7 +101,7 @@ public class Sale
     public void Cancel()
     {
         if (Status == SaleStatus.Done)
-            throw new Exception("Sale completed.");
+            throw new BusinessException("Sale completed.");
         Status = SaleStatus.Canceled;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -110,12 +111,12 @@ public class Sale
     public void UpdateItem (string productId, int quantity)
     {
         if(Status == SaleStatus.Done || Status == SaleStatus.Canceled)
-            throw new Exception ("Sale cannot be changed.");
+            throw new BusinessException ("Sale cannot be changed.");
 
         var item = _items.FirstOrDefault(x => x.ProductId == productId);
 
         if (item == null )
-            throw new Exception("Item not found.");
+            throw new BusinessException("Item not found.");
 
         item.UpdateQuantity(quantity);
         UpdatedAt = DateTime.UtcNow;
