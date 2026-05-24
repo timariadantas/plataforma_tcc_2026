@@ -3,6 +3,7 @@ using SalesService.Application.Repositories;
 using SalesService.Application.Services;
 using SalesService.Domain.Repositories;
 using SalesService.Infrastructute.Repositories;
+using SalesService.Infrastructute.DataBase;
 using DotNetEnv;
 
 Env.Load();
@@ -22,6 +23,7 @@ builder.Services.AddSwaggerGen();
 // repository
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 
+builder.Services.AddScoped<IDbConnectionFactory, DbConnection>();
 
 // service principal
 builder.Services.AddScoped<ISaleService, SaleService>();

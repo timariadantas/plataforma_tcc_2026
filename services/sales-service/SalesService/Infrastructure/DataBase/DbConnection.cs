@@ -1,9 +1,10 @@
 using Npgsql;
+using SalesService.Domain.Repositories;
 namespace SalesService.Infrastructute.DataBase;
 
-public static class DbConnection
+public class DbConnection : IDbConnectionFactory
 {
-    public static NpgsqlConnection GetConnection()
+    public  NpgsqlConnection CreateConnection()
     {
         var host = Environment.GetEnvironmentVariable("POSTGRES_HOST") ;
         var port = Environment.GetEnvironmentVariable("POSTGRES_PORT") ;
@@ -25,4 +26,6 @@ public static class DbConnection
 
         return new NpgsqlConnection(connectionString);
     }
+
+    
 }
