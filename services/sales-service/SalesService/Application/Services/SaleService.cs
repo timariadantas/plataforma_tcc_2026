@@ -94,11 +94,6 @@ public class SaleService : ISaleService
     // adiciona item na entidade
     sale.AddItem(productId, quantity, price);
 
-    // pega último item adicionado
-    var item = sale.Items.Last();
-
-    // salva item no banco
-    _repository.AddItem(item);
 
     // baixa estoque no product-service
     await _productservice.DecreaseStock(productId, quantity);

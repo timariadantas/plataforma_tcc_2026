@@ -86,11 +86,14 @@ public class SalesController : ControllerBase
     public async Task<IActionResult> UpdateItem(
         string saleId,
         string productId,
-        string id,
-        [FromBody] AddItemRequest request)
+
+        [FromBody] UpdateItemRequest request
+         )
     {
         _logger.LogInformation(
-            "Updating product {ProductId} in sale {SaleId}", request.ProductId, id); 
+            "Updating product {ProductId} in sale {SaleId}",
+                productId,
+                saleId);
 
         await _service.UpdateItem(
             saleId,
@@ -116,7 +119,7 @@ public class SalesController : ControllerBase
     {
         Message = "Sale finished successfully",
         Elapsed = 0,
-        Data = null
+        Data = totals,
     };
 
     return Ok(result);
@@ -210,5 +213,3 @@ public class SalesController : ControllerBase
 
 }
 
-//ApiResponse<object>?
-//endpoints não retorna objeto de venda, só confirma a ação.
