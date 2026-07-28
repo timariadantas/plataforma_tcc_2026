@@ -3,8 +3,8 @@ using SalesService.Domain.Exceptions;
 
 public class SaleItem
 {
-    public string SaleId{get; private set;}
-    public string ProductId{get; private set;}
+    public string SaleId{get; private set;} = string.Empty;
+    public string ProductId{get; private set;} = string.Empty;
     public int Quantity {get; private set;}
     public decimal UnitPrice {get; private set;}
     public decimal Total => Quantity * UnitPrice;

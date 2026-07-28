@@ -11,30 +11,33 @@ namespace SalesService.Application.Services;
 public class SaleService : ISaleService   
 {
    private readonly ISaleRepository _repository;
+   private readonly IClientService _clientservice;
    private readonly IProductService _productservice;
    private readonly ICurrencyService _currencyService; 
    private readonly ILogger<SaleService> _logger;
 
    public SaleService(
        ISaleRepository repository,
+       IClientService clientservice,
        IProductService productservice,
        ICurrencyService currencyService,
        ILogger<SaleService> logger
    )
     {
         _repository = repository;
+        _clientservice = clientservice;
         _productservice = productservice;
         _currencyService = currencyService;
         _logger = logger;
     }
 
-    public Sale CreateSale(string clientId)
+    public async Task<Sale> CreateSale(string clientId)
     {
         _logger.LogInformation(
         "Creating sale for client {ClientId}", clientId);
 
-        if (string.IsNullOrEmpty(clientId))
-            throw new ValidationException("ClientId is required");
+        if (!await _clientservice.ClientExists(clientId))
+            throw new NotFoundException("Client not found");
 
         var sale = new Sale(clientId);
         _repository.Save(sale);
@@ -64,11 +67,6 @@ public class SaleService : ISaleService
     if (sale == null)
         throw new NotFoundException("Sale not found");
 
-    // valida se produto existe
-    if (!await _productservice.ProductsExists(productId))
-        throw new NotFoundException("Product not found");
-
-    // valida quantidade
     if (quantity <= 0)
         throw new ValidationException("Invalid quantity");
 
@@ -94,9 +92,6 @@ public class SaleService : ISaleService
     // adiciona item na entidade
     sale.AddItem(productId, quantity, price);
 
-
-    // baixa estoque no product-service
-    await _productservice.DecreaseStock(productId, quantity);
 
     // atualiza venda
     _repository.Update(sale);
@@ -179,11 +174,11 @@ public class SaleService : ISaleService
 
         if(sale == null)
             throw new NotFoundException("Sale not found");
-
-        if (!await _productservice.ProductsExists(productId))
-            throw new NotFoundException("Product not found");
+        if (quantity <= 0)
+        throw new ValidationException("Invalid quantity");
 
         var stock = await _productservice.GetStock(productId);
+        
         if (quantity > stock)
             throw new BusinessException("Insufficient stock");
             
