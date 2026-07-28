@@ -1,6 +1,6 @@
 from flask import Flask
 from flasgger import Swagger
-from app.api.controller.product_controller import product_blueprint
+from api.controller.product_controller import product_blueprint
 
 app = Flask(__name__)
 app.config['SWAGGER'] = {
