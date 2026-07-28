@@ -1,6 +1,6 @@
 from domain.repositories.client_repository_interface import ClientRepositoryInterface
 from domain.entities.client import Client
-from datetime import datetime, timezone
+from datetime import datetime, date, timezone
 from infrastructure.logger.logger import get_logger
 
 logger = get_logger("ClientRepository")
@@ -19,10 +19,10 @@ class ClientRepository(ClientRepositoryInterface):
 
                 cursor.execute("""
                     INSERT INTO client (
-                        id, name, surname, email, birthdate,
+                        id, name, surname, email, password_hash, birthdate,
                         active, created_at, updated_at
                     ) VALUES (
-                        :id, :name, :surname, :email, :birthdate,
+                        :id, :name, :surname, :email,:password_hash, :birthdate,
                         :active, :created_at, :updated_at
                     )
                 """, {
@@ -30,6 +30,7 @@ class ClientRepository(ClientRepositoryInterface):
                     "name": client.name,
                     "surname": client.surname,
                     "email": client.email,
+                    "password_hash": client.password_hash,
                     "birthdate": client.birthdate,
                     "active": 1 if client.active else 0,
                     "created_at": client.created_at,
@@ -54,7 +55,7 @@ class ClientRepository(ClientRepositoryInterface):
                 logger.info(f"Fetching client by ID: {client_id}")
 
                 cursor.execute("""
-                    SELECT id, name, surname, email, birthdate, active,
+                    SELECT id, name, surname, email,password_hash, birthdate, active,
                            created_at, updated_at
                     FROM client
                     WHERE id = :id
@@ -82,7 +83,7 @@ class ClientRepository(ClientRepositoryInterface):
                 logger.info("Fetching all clients")
 
                 cursor.execute("""
-                    SELECT id, name, surname, email, birthdate, active,
+                    SELECT id, name, surname, email, password_hash, birthdate, active,
                            created_at, updated_at
                     FROM client
                 """)
@@ -105,7 +106,7 @@ class ClientRepository(ClientRepositoryInterface):
                 logger.info("Fetching active clients")
 
                 cursor.execute("""
-                    SELECT id, name, surname, email, birthdate, active,
+                    SELECT id, name, surname, email, password_hash, birthdate, active,
                            created_at, updated_at
                     FROM client
                     WHERE active = 1
@@ -128,7 +129,7 @@ class ClientRepository(ClientRepositoryInterface):
                 logger.info("Fetching inactive clients")
 
                 cursor.execute("""
-                    SELECT id, name, surname, email, birthdate, active,
+                    SELECT id, name, surname, email, password_hash, birthdate, active,
                            created_at, updated_at
                     FROM client
                     WHERE active = 0
@@ -174,7 +175,26 @@ class ClientRepository(ClientRepositoryInterface):
                 raise
             finally:
                 cursor.close()
-
+                
+    def update_password(self, client_id:str, password_hash:str):
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE client
+                SET password_hash = :password_hash,
+                    updated_at = :updated_at
+                WHERE id = :id
+            """, {
+                "id" : client_id,
+                "password_hash" : password_hash,
+                "updated_at" : datetime.now(timezone.utc)
+            })
+            conn.commit()
+        
+        
+        
+        
+        
    
     def delete(self, client_id: str):
         with self.db.get_connection() as conn:
@@ -202,20 +222,53 @@ class ClientRepository(ClientRepositoryInterface):
             finally:
                 cursor.close()
 
-    
+    def get_by_email(self, email:str):
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                logger.info(f"Fetching client by email: {email}")
+                
+                cursor.execute("""
+                    SELECT id, name, surname, email, password_hash, birthdate, active , created_at, updated_at
+                    FROM client
+                    WHERE email = :email
+                """, {"email":email})
+                row =  cursor.fetchone()
+                if not row:
+                    logger.warning(f"Client not found by email: {email}")
+                    return None
+                
+                return self._map_to_entity(row)
+
+            except Exception as e:
+                    logger.error(f"Error fetching client by email: {str(e)}")
+                    raise
+            finally:
+                    cursor.close()
+            
+            
+            
     # Mapper( banco para entitidade)
    
     def _map_to_entity(self, row):
+        
+        birthdate = row[5]
+
+        if isinstance(birthdate, datetime):
+            birthdate = birthdate.date()
+        
         client = Client(
             name=row[1],
             surname=row[2],
             email=row[3],
-            birthdate=row[4]
+            password_hash=row[4],
+            birthdate=birthdate
         )
 
         client.id = row[0]
-        client.active = bool(row[5])
-        client.created_at = row[6]
-        client.updated_at = row[7]
+        client.active = bool(row[6])
+        client.created_at = row[7]
+        client.updated_at = row[8]
+        
 
         return client

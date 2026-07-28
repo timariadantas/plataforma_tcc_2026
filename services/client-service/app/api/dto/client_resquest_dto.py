@@ -3,10 +3,11 @@ from datetime import datetime
 
 class ClientRequestDto:
 
-    def __init__(self, name, surname, email, birthdate):
+    def __init__(self, name, surname, email, password, birthdate):
         self.name = name
         self.surname = surname
         self.email = email
+        self.password= password
         self.birthdate = birthdate
 
     @staticmethod
@@ -21,5 +22,6 @@ class ClientRequestDto:
             name=data.get("name"),
             surname=data.get("surname"),
             email=data.get("email"),
+            password=data.get("password"),
             birthdate=birthdate
         )
