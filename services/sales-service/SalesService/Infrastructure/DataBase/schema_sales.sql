@@ -1,14 +1,14 @@
 CREATE TABLE IF NOT EXISTS sales (
-    id VARCHAR(26) PRIMARY KEY,
-    client_id VARCHAR(26) NOT NULL,
+    id VARCHAR(36) PRIMARY KEY,
+    client_id VARCHAR(36) NOT NULL,
     status VARCHAR(50) NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sale_items (
-    sale_id VARCHAR(26),
-    product_id VARCHAR(26),
+    sale_id VARCHAR(36),
+    product_id VARCHAR(36),
     quantity INT,
     unit_price NUMERIC(18,2),
     created_at TIMESTAMP,
