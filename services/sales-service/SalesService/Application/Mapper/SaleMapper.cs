@@ -11,7 +11,7 @@ public static SaleResponse ToResponse (Sale sale)
     return new SaleResponse
     {
         Id = sale.Id,
-        ClientId = sale.ClientId,
+        clientId = sale.ClientId,
         Status = sale.Status.ToString(),
         Items = sale.Items.Select(item => new SaleItemResponse
         {
