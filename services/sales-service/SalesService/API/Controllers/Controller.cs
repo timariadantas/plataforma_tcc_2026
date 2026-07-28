@@ -4,10 +4,11 @@ using SalesService.Application.DTO.Response;
 using SalesService.Application.Mapper;
 using SalesService.Application.Repositories;
 using System;
+using Microsoft.AspNetCore.Authorization;
 
 
 namespace SalesService.Api.Controllers;
-
+[Authorize]
 [ApiController]
 [Route("sales")]
 public class SalesController : ControllerBase
@@ -23,15 +24,21 @@ public class SalesController : ControllerBase
     }
 
     [HttpPost]
-    public IActionResult Create([FromBody] CreateSaleRequest request)
-    {
-        _logger.LogInformation(
-            "Creating sale for client {ClientId}", request.ClientId);
+    public async Task <IActionResult> Create()
+   {
 
-        var sale = _service.CreateSale(request.ClientId);
+        var clientId = User.FindFirst("client_id")?.Value;
+        if (clientId == null)
+            return Unauthorized();
+
+        _logger.LogInformation(
+        "Creating sale for client {ClientId}",clientId);
+
+        var sale = await _service.CreateSale(clientId);
+    
         var response = SaleMapper.ToResponse(sale);
 
-        var result = new ApiResponse<SaleResponse>
+       var result = new ApiResponse<SaleResponse>
         {
             Message = "Sale created successfully",
             Elapsed = 0,
