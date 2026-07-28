@@ -1,4 +1,4 @@
-from app.domain.entities.product import Product
+from domain.entities.product import Product
 
 
 class ProductMapper:

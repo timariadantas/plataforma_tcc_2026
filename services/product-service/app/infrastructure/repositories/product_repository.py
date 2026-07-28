@@ -1,7 +1,15 @@
 from datetime import datetime, timezone
-from app.infrastructure.database.mongo_connection import get_database
-from app.infrastructure.logging.logger import get_logger
-from app.domain.entities.product import Product
+from infrastructure.database.mongo_connection import get_database
+from infrastructure.logging.logger import get_logger
+from domain.entities.product import Product
+from infrastructure.errors.service_errors import( 
+ProductNotFoundError,
+InsufficientStockError ,
+ServiceError,
+DatabaseUnavailableError)
+
+
+
 
 logger = get_logger(__name__)
 
@@ -32,9 +40,12 @@ class ProductRepository:
 
             logger.info("Product saved successfully")
 
-        except Exception as e:
-            logger.error(f"Error saving product: {e}")
+        except ServiceError:
             raise
+
+        except Exception as e:
+            logger.error(f"Database error while saving product: {e}")
+            raise DatabaseUnavailableError("Database unavailable") from e
 
     def find_by_id(self, product_id: str) -> Product:
         try:
@@ -44,7 +55,7 @@ class ProductRepository:
 
             if not doc:
                 logger.warning(f"Product not found: {product_id}")
-                raise ValueError("Product not found")
+                raise ProductNotFoundError("Product not found")
 
             return Product(
                 id=str(doc["_id"]),
@@ -56,10 +67,12 @@ class ProductRepository:
                 updated_at=doc.get("updated_at"),
                 active=doc.get("active", True)
             )
+        except ServiceError:
+            raise 
 
         except Exception as e:
-            logger.error(f"Error finding product: {e}")
-            raise
+            logger.error(f"Database error while finding product: {e}")
+            raise DatabaseUnavailableError("Database unavailable") from e 
 
     def find_all(self, page=1, limit=10):
         try:
@@ -89,9 +102,11 @@ class ProductRepository:
                 for d in docs
             ]
 
+       
+
         except Exception as e:
             logger.error(f"Error fetching products: {e}")
-            raise
+            raise DatabaseUnavailableError("Database unavailable") from e
 
     def update(self, product_id: str, data: dict):
         try:
@@ -106,13 +121,16 @@ class ProductRepository:
 
             if result.matched_count == 0:
                 logger.warning(f"Product not found for update: {product_id}")
-                raise ValueError("Product not found")
+                raise ProductNotFoundError("Product not found")
 
             logger.info("Product updated successfully")
 
-        except Exception as e:
-            logger.error(f"Error updating product: {e}")
+        except ServiceError:
             raise
+
+        except Exception as e:
+            logger.error(f"Database error while updating product: {e}")
+            raise DatabaseUnavailableError("Database unavailable") from e 
 
     def delete(self, product_id: str):
         try:
@@ -130,13 +148,16 @@ class ProductRepository:
 
             if result.matched_count == 0:
                 logger.warning(f"Product not found for delete: {product_id}")
-                raise ValueError("Product not found")
+                raise ProductNotFoundError("Product not found")
 
             logger.info("Product deleted successfully")
 
-        except Exception as e:
-            logger.error(f"Error deleting product: {e}")
+        except ServiceError:
             raise
+
+        except Exception as e:
+            logger.error(f"Database error while deleting product: {e}")
+            raise DatabaseUnavailableError("Database unavailable") from e
 
     def decrease_stock(self, product_id: str, quantity: int):
         try:
@@ -145,10 +166,10 @@ class ProductRepository:
             doc = self.collection.find_one({"_id": product_id})
 
             if not doc:
-                raise ValueError("Product not found")
+                raise ProductNotFoundError("Product not found")
 
             if doc["quantity"] < quantity:
-                raise ValueError("Insufficient stock")
+                raise InsufficientStockError("Insufficient stock")
 
             self.collection.update_one(
                 {"_id": product_id},
@@ -157,9 +178,11 @@ class ProductRepository:
                     "$set": {"updated_at": datetime.now(timezone.utc)}
                 }
             )
-
             logger.info("Stock updated successfully")
 
-        except Exception as e:
-            logger.error(f"Error decreasing stock: {e}")
+        except ServiceError:
             raise
+
+        except Exception as e:
+            logger.error(f"Database error while decreasing stock: {e}")
+            raise DatabaseUnavailableError("Database unavailable") from e 
