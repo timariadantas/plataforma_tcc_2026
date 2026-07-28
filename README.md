@@ -256,7 +256,7 @@ A plataforma utiliza autenticação baseada em JWT (JSON Web Token) para identif
 
 O processo de autenticação é realizado pelo Client Service, responsável por validar as credenciais e gerar o token de acesso.
 
-***Fluxo de autenticação**
+**Fluxo de autenticação**
 Usuário realiza o cadastro.
 Usuário realiza login.
 Client Service valida as informações.
@@ -300,14 +300,14 @@ cd e2e-tests
 
 ***O fluxo valida:***
 
-criação de cliente
-autenticação JWT
-criação de produto
-criação de venda
-inclusão de itens
-atualização de estoque
-finalização da venda
-consulta da venda
+-criação de cliente
+-autenticação JWT
+-criação de produto
+-criação de venda
+-inclusão de itens
+-atualização de estoque
+-finalização da venda
+-consulta da venda
 
 #### Fluxo principal da venda
     Cadastro cliente
@@ -335,29 +335,24 @@ A documentação detalhada dos endpoints está disponível em:
 docs/API.md
 
 Contendo:
-
-Client Service
-Product Service
-Sales Service
-Exemplos de requisições curl
-Exemplos de respostas
+-Client Service
+-Product Service
+-Sales Service
+-Exemplos de requisições curl
+-Exemplos de respostas
 
 ### Melhorias futuras
 
 Possíveis evoluções da plataforma:
 
-Implementação de autorização baseada em Roles
-Gateway de API
-Observabilidade com métricas e logs centralizados
-Mensageria entre serviços utilizando filas
-Deploy em ambiente cloud
-Pipeline CI/CD
-Autoria
+-Implementação de autorização baseada em Roles
+-Gateway de API
+-Observabilidade com métricas e logs centralizados
+-Mensageria entre serviços utilizando filas
+-Deploy em ambiente cloud
+-Pipeline CI/CD
 
-
-
-
-
+-Autoria
 
 Projeto desenvolvido por:
 
