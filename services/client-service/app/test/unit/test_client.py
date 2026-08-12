@@ -4,6 +4,7 @@ from domain.entities.client import Client
 from infrastructure.errors.service_errors import ValidationError
 
 
+
 def test_should_create_client():
     client = Client(
         name="Maria",
@@ -22,7 +23,31 @@ def test_should_create_client():
     assert client.created_at is not None
     assert client.updated_at is not None
 
+def test_should_create_client_with_ulid():
+    client = Client(
+        name="Maria",
+        surname="Dantas",
+        email="maria@email.com",
+        password_hash="123456",
+        birthdate=date(2000, 1, 1)
+    )
 
+    assert client.id is not None
+    assert len(client.id) == 26
+    
+def test_should_preserve_existing_id():
+    existing_id = "01KZSKFN7WS1X80M2V2DAC1WVD"
+
+    client = Client(
+        name="Maria",
+        surname="Dantas",
+        email="maria@email.com",
+        password_hash="123456",
+        birthdate=date(2000, 1, 1),
+        id=existing_id
+    )
+
+    assert client.id == existing_id
 def test_should_raise_validation_error_when_name_is_empty():
     with pytest.raises(ValidationError):
         Client(

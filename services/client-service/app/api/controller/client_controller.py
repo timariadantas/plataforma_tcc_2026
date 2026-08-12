@@ -226,10 +226,11 @@ def update_client(client_id):
             surname=dto.surname,
             email=dto.email,
             password_hash=dto.password,
-            birthdate=dto.birthdate
+            birthdate=dto.birthdate,
+            id = client_id
         )
 
-        client.id = client_id
+
         client_service.update_client(client)
 
         return jsonify({"message": "updated"}), 200

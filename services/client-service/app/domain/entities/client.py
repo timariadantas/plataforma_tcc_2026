@@ -1,11 +1,11 @@
 from datetime import datetime , date , timezone
-import uuid
+import ulid 
 from infrastructure.errors.service_errors import ValidationError
 
 class Client:
-    def __init__(self, name:str, surname:str, email:str,password_hash: str, birthdate:date):
+    def __init__(self, name:str, surname:str, email:str,password_hash: str, birthdate:date, id: str | None = None):
         self._validate(name, surname, email, password_hash, birthdate)
-        self.id = str(uuid.uuid4())
+        self.id = id or str(ulid.new())
         self.name = name
         self.surname = surname
         self.email = email

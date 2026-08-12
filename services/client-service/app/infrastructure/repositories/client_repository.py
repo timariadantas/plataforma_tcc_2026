@@ -262,10 +262,11 @@ class ClientRepository(ClientRepositoryInterface):
             surname=row[2],
             email=row[3],
             password_hash=row[4],
-            birthdate=birthdate
+            birthdate=birthdate, 
+            id =row[0]
         )
 
-        client.id = row[0]
+        
         client.active = bool(row[6])
         client.created_at = row[7]
         client.updated_at = row[8]

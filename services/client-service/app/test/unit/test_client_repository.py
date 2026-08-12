@@ -4,6 +4,7 @@ from datetime import date, datetime, timezone
 
 from infrastructure.repositories.client_repository import ClientRepository
 from domain.entities.client import Client
+import ulid 
 
 @pytest.fixture
 def repository():
@@ -33,11 +34,17 @@ def test_save_client(repository):
     repo.save(client)
     cursor.execute.assert_called_once()
     conn.commit.assert_called_once()
+    sql, params = cursor.execute.call_args.args
+
+    assert params["id"] == client.id
+    assert len(params["id"]) == 26
     
 def test_get_client_by_id(repository):
     repo, db, conn, cursor = repository 
+    client_id = str(ulid.new()) 
+    
     cursor.fetchone.return_value = (
-        "1",
+        client_id,
         "test",
         "tests",
         "email@email.com",
@@ -49,8 +56,9 @@ def test_get_client_by_id(repository):
         datetime.now(timezone.utc)
         
     )
-    client = repo.get_by_id("1")
-    assert client.id == "1"
+    client = repo.get_by_id(client_id)
+
+    assert client.id == client_id
     assert client.email == "email@email.com"
     
     
@@ -166,9 +174,9 @@ def test_get_all_active_clients(repository):
 def test_map_database_row_to_entity(repository):
 
     repo, _, _, _ = repository
-
+    client_id = str(ulid.new())
     row = (
-         "1",
+        client_id,
         "test",
         "tests",
         "email@email.com",
@@ -182,6 +190,6 @@ def test_map_database_row_to_entity(repository):
 
     client = repo._map_to_entity(row)
 
-    assert client.id == "1"
+    assert client.id == client_id
 
     assert client.birthdate == date(1993,1,5)
