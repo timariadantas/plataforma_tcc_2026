@@ -1,5 +1,5 @@
 import pytest
-from datetime import date
+from datetime import date , datetime , timezone
 from domain.entities.client import Client
 from infrastructure.errors.service_errors import ValidationError
 
@@ -18,8 +18,11 @@ def test_should_create_client():
     assert client.surname == "Dantas"
     assert client.email == "maria@email.com"
     assert client.password_hash == "123456"
-    assert client.active is True
+    
     assert client.id is not None
+    assert len(client.id) == 26
+    
+    assert client.active is True
     assert client.created_at is not None
     assert client.updated_at is not None
 
@@ -34,6 +37,26 @@ def test_should_create_client_with_ulid():
 
     assert client.id is not None
     assert len(client.id) == 26
+
+def test_should_generate_different_ulids():
+
+    client1 = Client(
+        "Maria",
+        "Dantas",
+        "maria1@email.com",
+        "123456",
+        date(2000, 1, 1)
+    )
+
+    client2 = Client(
+        "Maria",
+        "Dantas",
+        "maria2@email.com",
+        "123456",
+        date(2000, 1, 1)
+    )
+
+    assert client1.id != client2.id
     
 def test_should_preserve_existing_id():
     existing_id = "01KZSKFN7WS1X80M2V2DAC1WVD"
@@ -46,8 +69,40 @@ def test_should_preserve_existing_id():
         birthdate=date(2000, 1, 1),
         id=existing_id
     )
-
     assert client.id == existing_id
+
+def test_should_preserve_existing_dates():
+
+    created_at = datetime(
+        2025,
+        1,
+        10,
+        tzinfo=timezone.utc
+    )
+
+    updated_at = datetime(
+        2025,
+        1,
+        15,
+        tzinfo=timezone.utc
+    )
+
+    client = Client(
+        name="Maria",
+        surname="Dantas",
+        email="maria@email.com",
+        password_hash="123456",
+        birthdate=date(2000, 1, 1),
+        id="01KZSSCHCT24Q1YZ7P9PDTRCZW",
+        created_at=created_at,
+        updated_at=updated_at,
+        active=False
+    )
+
+    assert client.id == "01KZSSCHCT24Q1YZ7P9PDTRCZW"
+    assert client.created_at == created_at
+    assert client.updated_at == updated_at
+    assert client.active is False
 def test_should_raise_validation_error_when_name_is_empty():
     with pytest.raises(ValidationError):
         Client(

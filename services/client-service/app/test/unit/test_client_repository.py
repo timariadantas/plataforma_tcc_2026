@@ -39,9 +39,51 @@ def test_save_client(repository):
     assert params["id"] == client.id
     assert len(params["id"]) == 26
     
+def test_save_client_should_persist_ulid(repository):
+    repo, db, conn, cursor = repository
+
+    client = Client(
+        "Maria",
+        "Dantas",
+        "maria@email.com",
+        "112233",
+        date(1993, 1, 5)
+    )
+
+    repo.save(client)
+
+    cursor.execute.assert_called_once()
+
+    sql, params = cursor.execute.call_args.args
+
+    assert params["id"] == client.id
+    assert len(params["id"]) == 26
+
+    conn.commit.assert_called_once()
+    
+def test_save_client_should_preserve_existing_ulid(repository):
+    repo, db, conn, cursor = repository
+
+    client_id = "01KZSSCHCT24Q1YZ7P9PDTRCZW"
+
+    client = Client(
+        "Maria",
+        "Dantas",
+        "maria@email.com",
+        "112233",
+        date(1993, 1, 5),
+        id=client_id
+    )
+
+    repo.save(client)
+
+    _, params = cursor.execute.call_args.args
+
+    assert params["id"] == client_id
+    
 def test_get_client_by_id(repository):
     repo, db, conn, cursor = repository 
-    client_id = str(ulid.new()) 
+    client_id = "01KZSSCHCT24Q1YZ7P9PDTRCZW"
     
     cursor.fetchone.return_value = (
         client_id,
@@ -57,7 +99,8 @@ def test_get_client_by_id(repository):
         
     )
     client = repo.get_by_id(client_id)
-
+    
+    assert client is not None
     assert client.id == client_id
     assert client.email == "email@email.com"
     
@@ -174,22 +217,66 @@ def test_get_all_active_clients(repository):
 def test_map_database_row_to_entity(repository):
 
     repo, _, _, _ = repository
-    client_id = str(ulid.new())
+
+    client_id = "01KZSSCHCT24Q1YZ7P9PDTRCZW"
+
+    created_at = datetime(
+        2025,
+        1,
+        10,
+        tzinfo=timezone.utc
+    )
+
+    updated_at = datetime(
+        2025,
+        1,
+        15,
+        tzinfo=timezone.utc
+    )
+
     row = (
         client_id,
-        "test",
-        "tests",
-        "email@email.com",
+        "Maria",
+        "Dantas",
+        "maria@email.com",
         "112233",
-        date(1993,1,5),
+        date(1993, 1, 5),
         1,
-        datetime.now(timezone.utc),
-        datetime.now(timezone.utc)
-
+        created_at,
+        updated_at
     )
 
     client = repo._map_to_entity(row)
 
     assert client.id == client_id
+    assert client.name == "Maria"
+    assert client.surname == "Dantas"
+    assert client.email == "maria@email.com"
+    assert client.password_hash == "112233"
+    assert client.birthdate == date(1993, 1, 5)
+    assert client.active is True
+    assert client.created_at == created_at
+    assert client.updated_at == updated_at
+    
+def test_mapper_should_preserve_existing_ulid(repository):
 
-    assert client.birthdate == date(1993,1,5)
+    repo, _, _, _ = repository
+
+    client_id = "01KZSSCHCT24Q1YZ7P9PDTRCZW"
+
+    row = (
+        client_id,
+        "Maria",
+        "Dantas",
+        "maria@email.com",
+        "112233",
+        date(1993, 1, 5),
+        1,
+        datetime.now(timezone.utc),
+        datetime.now(timezone.utc)
+    )
+
+    client = repo._map_to_entity(row)
+
+    assert client.id == client_id
+    assert len(client.id) == 26

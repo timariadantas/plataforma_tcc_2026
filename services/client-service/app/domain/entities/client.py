@@ -3,19 +3,25 @@ import ulid
 from infrastructure.errors.service_errors import ValidationError
 
 class Client:
-    def __init__(self, name:str, surname:str, email:str,password_hash: str, birthdate:date, id: str | None = None):
+    def __init__(self, name:str, surname:str, email:str,password_hash: str, birthdate:date, id: str | None = None,created_at: datetime | None = None,
+        updated_at: datetime | None = None,
+        active: bool = True ):
         self._validate(name, surname, email, password_hash, birthdate)
+        # Novo cliente → gera ULID
+        # Cliente reconstruído → preserva ULID
         self.id = id or str(ulid.new())
         self.name = name
         self.surname = surname
         self.email = email
         self.password_hash = password_hash
         self.birthdate = birthdate
-        self.active = True
+        self.active = active
         
+        # Novo cliente → gera timestamp
+        # Cliente reconstruído → preserva timestamp
         now = datetime.now((timezone.utc))
-        self.created_at = now
-        self.updated_at = now
+        self.created_at = created_at or now
+        self.updated_at = updated_at or now
         
 # Validações do dominio
     def _validate(self, name, surname, email, password_hash,birthdate):

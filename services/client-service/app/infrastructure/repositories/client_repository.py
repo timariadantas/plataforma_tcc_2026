@@ -249,7 +249,6 @@ class ClientRepository(ClientRepositoryInterface):
             
             
     # Mapper( banco para entitidade)
-   
     def _map_to_entity(self, row):
         
         birthdate = row[5]
@@ -257,19 +256,16 @@ class ClientRepository(ClientRepositoryInterface):
         if isinstance(birthdate, datetime):
             birthdate = birthdate.date()
         
-        client = Client(
+        return Client(
+            id=row[0],
             name=row[1],
             surname=row[2],
             email=row[3],
             password_hash=row[4],
             birthdate=birthdate, 
-            id =row[0]
-        )
+            active = bool(row[6]),
+            created_at = row[7],
+            updated_at = row[8]
+            )
 
-        
-        client.active = bool(row[6])
-        client.created_at = row[7]
-        client.updated_at = row[8]
-        
-
-        return client
+       
