@@ -1,6 +1,5 @@
 from domain.entities.product import Product
 
-
 class ProductMapper:
 
     @staticmethod

@@ -2,19 +2,17 @@ from datetime import datetime, timezone
 from infrastructure.database.mongo_connection import get_database
 from infrastructure.logging.logger import get_logger
 from domain.entities.product import Product
+from domain.repositories.product_repository_interface import ProductRepositoryInterface
+from application.mapper.product_mapper import ProductMapper
 from infrastructure.errors.service_errors import( 
 ProductNotFoundError,
 InsufficientStockError ,
 ServiceError,
 DatabaseUnavailableError)
 
-
-
-
 logger = get_logger(__name__)
 
-
-class ProductRepository:
+class ProductRepository(ProductRepositoryInterface):
 
     def __init__(self, db= None):
         if db is None:
@@ -25,16 +23,7 @@ class ProductRepository:
         try:
             logger.info(f"Saving product: {product.id}")
 
-            data = {
-                "_id": product.id,
-                "name": product.name,
-                "description": product.description,
-                "price": product.price,
-                "quantity": product.quantity,
-                "created_at": product.created_at,
-                "updated_at": product.updated_at,
-                "active": product.active
-            }
+            data = ProductMapper.to_document(product)
 
             self.collection.insert_one(data)
 
@@ -57,16 +46,8 @@ class ProductRepository:
                 logger.warning(f"Product not found: {product_id}")
                 raise ProductNotFoundError("Product not found")
 
-            return Product(
-                id=str(doc["_id"]),
-                name=doc["name"],
-                description=doc.get("description"),
-                price=doc["price"],
-                quantity=doc["quantity"],
-                created_at=doc.get("created_at"),
-                updated_at=doc.get("updated_at"),
-                active=doc.get("active", True)
-            )
+            return  ProductMapper.from_document(doc)
+        
         except ServiceError:
             raise 
 
@@ -89,16 +70,7 @@ class ProductRepository:
             logger.info(f"Total products fetched: {len(docs)}")
 
             return [
-                Product(
-                    id=str(d["_id"]),
-                    name=d["name"],
-                    description=d.get("description"),
-                    price=d["price"],
-                    quantity=d["quantity"],
-                    created_at=d.get("created_at"),
-                    updated_at=d.get("updated_at"),
-                    active=d.get("active", True)
-                )
+                ProductMapper.from_document(d)
                 for d in docs
             ]
 

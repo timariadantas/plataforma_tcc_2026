@@ -8,11 +8,11 @@ class ProductRepositoryInterface(ABC):
         pass
 
     @abstractmethod
-    def find_all(self):
-        pass
-
-    @abstractmethod
     def find_by_id(self, product_id):
+        pass
+    
+    @abstractmethod
+    def find_all(self,page=1, limit=10):
         pass
 
     @abstractmethod
@@ -21,4 +21,8 @@ class ProductRepositoryInterface(ABC):
 
     @abstractmethod
     def delete(self, product_id):
+        pass
+
+    @abstractmethod
+    def decrease_stock(self, product_id, quantity):
         pass

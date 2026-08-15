@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-import uuid
+import ulid 
 
 class Product:
     def __init__(
@@ -23,7 +23,7 @@ class Product:
         if quantity < 0:
             raise ValueError("Quantity cannot be negative")
         
-        self.id = id or str(uuid.uuid4())
+        self.id = id or str(ulid.new())
         self.name = name
         self.description = description
         self.price = price

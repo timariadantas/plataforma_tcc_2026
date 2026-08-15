@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import MagicMock
 from types import SimpleNamespace
 
+
 from application.service.product_service import ProductService
 from infrastructure.errors.service_errors import InvalidProductDataError
 

@@ -1,4 +1,5 @@
 import pytest
+import ulid
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
@@ -84,3 +85,23 @@ def test_should_convert_entity_to_response():
     assert response["description"] == "Dell"
     assert response["price"] == 5000
     assert response["quantity"] == 10
+
+
+def test_should_preserve_existing_ulid():
+
+    product_id = str(ulid.new())
+
+    doc = {
+        "_id": product_id,
+        "name": "Notebook",
+        "description": "Dell",
+        "price": 4500,
+        "quantity": 10,
+        "created_at": None,
+        "updated_at": None,
+        "active": True
+    }
+
+    product = ProductMapper.from_document(doc)
+
+    assert product.id == product_id
