@@ -14,6 +14,10 @@ class ProductRepositoryInterface(ABC):
     @abstractmethod
     def find_all(self,page=1, limit=10):
         pass
+    
+    @abstractmethod
+    def find_inactive(self, page=1, limit=10):
+        pass
 
     @abstractmethod
     def update(self, product_id, data):
@@ -26,3 +30,7 @@ class ProductRepositoryInterface(ABC):
     @abstractmethod
     def decrease_stock(self, product_id, quantity):
         pass
+    @abstractmethod
+    def increase_stock(self, product_id, quantity):
+        pass
+    
