@@ -9,6 +9,12 @@ ProductNotFoundError,
 InsufficientStockError ,
 ServiceError,
 DatabaseUnavailableError)
+from infrastructure.resilience.circuit_breaker import CircuitBreaker
+from pymongo.errors import (
+    PyMongoError,
+    ServerSelectionTimeoutError,
+    ConnectionFailure
+)
 
 logger = get_logger(__name__)
 
@@ -18,6 +24,16 @@ class ProductRepository(ProductRepositoryInterface):
         if db is None:
             db = get_database()
         self.collection = db["products"]
+        
+        self.circuit_breaker = CircuitBreaker(
+            failure_threshold=3,
+            recovery_timeout=30,
+            failure_exceptions=(
+                ServerSelectionTimeoutError,
+                ConnectionFailure
+            )
+        )
+        
 
     def save(self, product: Product):
         try:
@@ -37,24 +53,46 @@ class ProductRepository(ProductRepositoryInterface):
             raise DatabaseUnavailableError("Database unavailable") from e
 
     def find_by_id(self, product_id: str) -> Product:
-        try:
-            logger.info(f"Finding product: {product_id}")
 
-            doc = self.collection.find_one({"_id": product_id})
+        logger.info(
+            f"Finding product: {product_id}"
+        )
+        try:
+
+            def find_product():
+
+                return self.collection.find_one(
+                    {"_id": product_id}
+                )
+
+            doc = self.circuit_breaker.call(
+                find_product
+            )
 
             if not doc:
-                logger.warning(f"Product not found: {product_id}")
-                raise ProductNotFoundError("Product not found")
 
-            return  ProductMapper.from_document(doc)
-        
+                logger.warning(
+                    f"Product not found: {product_id}"
+                )
+
+                raise ProductNotFoundError(
+                    "Product not found"
+                )
+
+            return ProductMapper.from_document(doc)
+
         except ServiceError:
-            raise 
+            raise
 
-        except Exception as e:
-            logger.error(f"Database error while finding product: {e}")
-            raise DatabaseUnavailableError("Database unavailable") from e 
+        except PyMongoError as e:
 
+            logger.error(
+                f"Database error while finding product: {e}"
+            )
+
+            raise DatabaseUnavailableError(
+                "Database unavailable"
+            ) from e
     def find_all(self, page=1, limit=10):
         try:
             logger.info(f"Fetching products page={page}, limit={limit}")
@@ -62,7 +100,7 @@ class ProductRepository(ProductRepositoryInterface):
             skip = (page - 1) * limit
 
             docs = list(
-                self.collection.find()
+                self.collection.find({"active": True})
                 .skip(skip)
                 .limit(limit)
             )
@@ -73,13 +111,36 @@ class ProductRepository(ProductRepositoryInterface):
                 ProductMapper.from_document(d)
                 for d in docs
             ]
-
-       
-
         except Exception as e:
             logger.error(f"Error fetching products: {e}")
             raise DatabaseUnavailableError("Database unavailable") from e
 
+    def find_inactive(self, page=1, limit=10):
+        try:
+            logger.info(
+                f"Fetching inactive products "
+                f"page={page}, limit={limit}"
+        )
+
+            skip = (page - 1) * limit
+
+            docs = list(
+                self.collection.find({"active": False})
+                .skip(skip)
+                .limit(limit)
+            )
+
+            logger.info(f"Total inactive products fetched: {len(docs)}")
+
+            return [
+                ProductMapper.from_document(d)
+                for d in docs
+            ]
+
+        except Exception as e:
+            logger.error(f"Error fetching inactive products: {e}")
+
+            raise DatabaseUnavailableError("Database unavailable") from e
     def update(self, product_id: str, data: dict):
         try:
             logger.info(f"Updating product: {product_id}")
@@ -135,26 +196,80 @@ class ProductRepository(ProductRepositoryInterface):
         try:
             logger.info(f"Decreasing stock: {product_id}")
 
-            doc = self.collection.find_one({"_id": product_id})
-
-            if not doc:
-                raise ProductNotFoundError("Product not found")
-
-            if doc["quantity"] < quantity:
-                raise InsufficientStockError("Insufficient stock")
-
-            self.collection.update_one(
-                {"_id": product_id},
+            result = self.collection.update_one(
                 {
-                    "$inc": {"quantity": -quantity},
-                    "$set": {"updated_at": datetime.now(timezone.utc)}
+                    "_id": product_id,
+                    "quantity": {"$gte": quantity}
+                },
+                {
+                    "$inc": {
+                        "quantity": -quantity
+                    },
+                    "$set": {
+                        "updated_at": datetime.now(timezone.utc)
+                    }
                 }
             )
+
+            if result.matched_count == 0:
+
+                if product := self.collection.find_one({"_id": product_id}):
+                    raise InsufficientStockError("Insufficient stock")
+
+                else:
+                    raise ProductNotFoundError("Product not found")
+
             logger.info("Stock updated successfully")
 
         except ServiceError:
             raise
 
         except Exception as e:
-            logger.error(f"Database error while decreasing stock: {e}")
-            raise DatabaseUnavailableError("Database unavailable") from e 
+            logger.error(
+                f"Database error while decreasing stock: {e}"
+            )
+            raise DatabaseUnavailableError(
+                "Database unavailable"
+            ) from e   
+            
+    
+    def increase_stock(self, product_id: str, quantity: int):
+        try:
+            logger.info(f"Increasing stock: {product_id}")
+
+            result = self.collection.update_one(
+                {
+                    "_id": product_id
+                },
+                {
+                    "$inc": {
+                        "quantity": quantity
+                    },
+                    "$set": {
+                        "updated_at": datetime.now(timezone.utc)
+                    }
+                }
+            )
+
+            if result.matched_count == 0:
+                logger.warning(
+                    f"Product not found for stock increase: {product_id}"
+                )
+
+                raise ProductNotFoundError(
+                    "Product not found"
+                )
+
+            logger.info("Stock increased successfully")
+
+        except ServiceError:
+            raise
+
+        except Exception as e:
+            logger.error(
+                f"Database error while increasing stock: {e}"
+            )
+
+            raise DatabaseUnavailableError(
+                "Database unavailable"
+            ) from e

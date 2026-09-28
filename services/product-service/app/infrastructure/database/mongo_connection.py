@@ -1,10 +1,12 @@
 import os
+from datetime import timezone
 from pymongo import MongoClient
 from infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
 _client = None
+
 
 def get_database():
     global _client
@@ -17,6 +19,18 @@ def get_database():
             raise ValueError("MONGO_URI não definida")
 
         logger.info("Conectando ao MongoDB...")
-        _client = MongoClient(mongo_uri)
+
+        _client = MongoClient(
+            mongo_uri,
+            tz_aware=True,
+            tzinfo=timezone.utc,
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=5000,
+            socketTimeoutMS=5000,
+            
+            # Retry
+            retryWrites=True,
+            retryReads=True
+        )
 
     return _client["product_db"]
