@@ -17,7 +17,7 @@ def test_create_product_successfully():
     assert product.price == 5.00
     assert product.quantity == 10
     assert product.active is True
-import ulid
+
 
 
 def test_should_generate_ulid_when_creating_product():

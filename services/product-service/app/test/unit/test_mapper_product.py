@@ -32,7 +32,8 @@ def test_should_convert_entity_to_document():
         name="Notebook",
         description="Dell",
         price=5000,
-        quantity=10
+        quantity=10,
+        created_by="user-123"
     )
 
     document = ProductMapper.to_document(product)
@@ -43,6 +44,7 @@ def test_should_convert_entity_to_document():
     assert document["price"] == 5000
     assert document["quantity"] == 10
     assert document["active"] is True
+    assert document["created_by"] == "user-123"
 
 
 def test_should_convert_document_to_entity():
@@ -57,7 +59,8 @@ def test_should_convert_document_to_entity():
         "quantity": 10,
         "created_at": now,
         "updated_at": now,
-        "active": True
+        "active": True,
+        "created_by": "user-123"
     }
 
     product = ProductMapper.from_document(document)
@@ -67,6 +70,7 @@ def test_should_convert_document_to_entity():
     assert product.description == "Dell"
     assert product.price == 5000
     assert product.quantity == 10
+    assert product.created_by == "user-123"
 
 
 def test_should_convert_entity_to_response():

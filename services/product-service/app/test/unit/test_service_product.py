@@ -2,9 +2,10 @@ import pytest
 from unittest.mock import MagicMock
 from types import SimpleNamespace
 
-
 from application.service.product_service import ProductService
-from infrastructure.errors.service_errors import InvalidProductDataError
+from infrastructure.errors.service_errors import (
+    InvalidProductDataError
+)
 
 
 @pytest.fixture
@@ -27,43 +28,79 @@ def dto():
     )
 
 
-def test_create_product_successfully(service, repository, dto):
+def test_create_product_successfully(
+    service,
+    repository,
+    dto
+):
 
-    response = service.create_product(dto, "user-123")
+    response = service.create_product(
+        dto,
+        "user-123"
+    )
 
     repository.save.assert_called_once()
+
+    saved_product = repository.save.call_args[0][0]
+
+    assert saved_product.created_by == "user-123"
 
     assert response["name"] == "Notebook"
     assert response["price"] == 4500
 
 
-def test_raise_error_when_price_is_zero(service, dto):
+def test_raise_error_when_price_is_zero(
+    service,
+    dto
+):
 
     dto.price = 0
 
     with pytest.raises(InvalidProductDataError):
-        service.create_product(dto, "user-123")
+
+        service.create_product(
+            dto,
+            "user-123"
+        )
 
 
-def test_raise_error_when_price_is_negative(service, dto):
+def test_raise_error_when_price_is_negative(
+    service,
+    dto
+):
 
     dto.price = -10
 
     with pytest.raises(InvalidProductDataError):
-        service.create_product(dto, "user-123")
+
+        service.create_product(
+            dto,
+            "user-123"
+        )
 
 
-def test_raise_error_when_quantity_is_negative(service, dto):
+def test_raise_error_when_quantity_is_negative(
+    service,
+    dto
+):
 
     dto.quantity = -1
 
     with pytest.raises(InvalidProductDataError):
-        service.create_product(dto, "user-123")
+
+        service.create_product(
+            dto,
+            "user-123"
+        )
 
 
-def test_get_all_products(service, repository):
+def test_get_all_products(
+    service,
+    repository
+):
 
     repository.find_all.return_value = [
+
         SimpleNamespace(
             id="1",
             name="Notebook",
@@ -71,17 +108,58 @@ def test_get_all_products(service, repository):
             price=4500,
             quantity=5
         )
+
     ]
 
-    products = service.get_all_products(1, 10)
+    products = service.get_all_products(
+        1,
+        10
+    )
 
-    repository.find_all.assert_called_once_with(1, 10)
+    repository.find_all.assert_called_once_with(
+        1,
+        10
+    )
 
     assert len(products) == 1
     assert products[0]["name"] == "Notebook"
 
 
-def test_get_product_by_id(service, repository):
+def test_get_inactive_products(
+    service,
+    repository
+):
+
+    repository.find_inactive.return_value = [
+
+        SimpleNamespace(
+            id="1",
+            name="Notebook antigo",
+            description="Dell",
+            price=4500,
+            quantity=5
+        )
+
+    ]
+
+    products = service.get_inactive_products(
+        1,
+        10
+    )
+
+    repository.find_inactive.assert_called_once_with(
+        1,
+        10
+    )
+
+    assert len(products) == 1
+    assert products[0]["name"] == "Notebook antigo"
+
+
+def test_get_product_by_id(
+    service,
+    repository
+):
 
     repository.find_by_id.return_value = SimpleNamespace(
         id="1",
@@ -98,9 +176,17 @@ def test_get_product_by_id(service, repository):
     assert product["id"] == "1"
 
 
-def test_update_product(service, repository):
+def test_update_product(
+    service,
+    repository
+):
 
     dto = MagicMock()
+
+    dto.name = "Notebook"
+    dto.description = "Notebook Dell"
+    dto.price = 4500
+    dto.quantity = 10
 
     dto.model_dump.return_value = {
         "name": "Notebook",
@@ -117,31 +203,57 @@ def test_update_product(service, repository):
 
     assert args[0] == "1"
     assert args[1]["name"] == "Notebook"
-    assert "updated_at" in args[1]
+    assert args[1]["price"] == 4500
+    assert args[1]["quantity"] == 10
 
-def test_delete_product(service, repository):
+
+def test_delete_product(
+    service,
+    repository
+):
 
     service.delete_product("1")
 
-    repository.delete.assert_called_once_with("1")
+    repository.delete.assert_called_once_with(
+        "1"
+    )
 
 
-def test_decrease_stock(service, repository):
+def test_decrease_stock(
+    service,
+    repository
+):
 
-    service.decrease_stock("1", 2)
+    service.decrease_stock(
+        "1",
+        2
+    )
 
-    repository.decrease_stock.assert_called_once_with("1", 2)
+    repository.decrease_stock.assert_called_once_with(
+        "1",
+        2
+    )
 
 
-def test_raise_error_when_decrease_stock_quantity_is_zero(service):
+def test_raise_error_when_decrease_stock_quantity_is_zero(
+    service
+):
 
     with pytest.raises(InvalidProductDataError):
 
-        service.decrease_stock("1", 0)
+        service.decrease_stock(
+            "1",
+            0
+        )
 
 
-def test_raise_error_when_decrease_stock_quantity_is_negative(service):
+def test_raise_error_when_decrease_stock_quantity_is_negative(
+    service
+):
 
     with pytest.raises(InvalidProductDataError):
 
-        service.decrease_stock("1", -5)
+        service.decrease_stock(
+            "1",
+            -5
+        )

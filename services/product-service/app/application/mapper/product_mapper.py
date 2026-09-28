@@ -9,9 +9,10 @@ class ProductMapper:
             description=dto.description,
             price=dto.price,
             quantity=dto.quantity,
-            active=True
+            active=True,
+            
         )
-
+#created_by será colocado depois, pelo Service:
     @staticmethod
     def to_document(product: Product):
         return {
@@ -22,7 +23,8 @@ class ProductMapper:
             "quantity": product.quantity,
             "created_at": product.created_at,
             "updated_at": product.updated_at,
-            "active": product.active
+            "active": product.active,
+            "created_by": product.created_by  #created_by será persistido no MongoDB.
         }
 
     @staticmethod
@@ -35,7 +37,8 @@ class ProductMapper:
             quantity=doc["quantity"],
             created_at=doc.get("created_at"),
             updated_at=doc.get("updated_at"),
-            active=doc.get("active", True)
+            active=doc.get("active", True),
+            created_by=doc.get("created_by")
         )
 
     @staticmethod

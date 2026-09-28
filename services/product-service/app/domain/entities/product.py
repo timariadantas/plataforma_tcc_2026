@@ -11,7 +11,8 @@ class Product:
         id=None,
         created_at=None,
         updated_at=None,
-        active=True
+        active=True,
+        created_by = None
     ):
     
         if not name or name.strip() == "":
@@ -31,3 +32,4 @@ class Product:
         self.created_at = created_at or datetime.now(timezone.utc)
         self.updated_at = updated_at or datetime.now(timezone.utc)
         self.active = active
+        self.created_by = created_by

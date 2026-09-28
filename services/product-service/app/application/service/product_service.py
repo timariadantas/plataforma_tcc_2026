@@ -1,13 +1,9 @@
-from datetime import datetime, timezone
 from application.mapper.product_mapper import ProductMapper
 from domain.repositories.product_repository_interface import ProductRepositoryInterface
 from infrastructure.logging.logger import get_logger
 from infrastructure.errors.service_errors import InvalidProductDataError
 
-
-
 logger = get_logger(__name__)
-
 
 class ProductService:
 
@@ -37,6 +33,15 @@ class ProductService:
         products = self.repository.find_all(page, limit)
 
         return [ProductMapper.to_response(p) for p in products]
+    def get_inactive_products(self, page, limit):
+        logger.info("Fetching inactive products")
+
+        products = self.repository.find_inactive(page, limit)
+
+        return [
+            ProductMapper.to_response(p)
+            for p in products
+        ]
 
     def get_product_by_id(self, product_id):
         logger.info(f"Fetching product: {product_id}")
@@ -48,8 +53,14 @@ class ProductService:
     def update_product(self, product_id, dto):
         logger.info(f"Updating product: {product_id}")
 
+        if dto.price <= 0:
+            raise InvalidProductDataError("Price must be greater than zero"
+        )
+
+        if dto.quantity < 0:
+            raise InvalidProductDataError("Quantity cannot be negative")
+
         data = dto.model_dump()
-        data["updated_at"] = datetime.now(timezone.utc)
 
         self.repository.update(product_id, data)
 
@@ -65,3 +76,13 @@ class ProductService:
             raise InvalidProductDataError("Quantity must be greater than zero")
 
         self.repository.decrease_stock(product_id, quantity)
+        
+    def increase_stock(self, product_id, quantity):
+        logger.info(f"Increasing stock: {product_id}")
+
+        if quantity <= 0:
+            raise InvalidProductDataError(
+                "Quantity must be greater than zero"
+            )
+
+        self.repository.increase_stock(product_id, quantity)
