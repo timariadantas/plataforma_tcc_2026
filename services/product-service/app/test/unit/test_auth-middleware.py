@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from flask import Flask
 
@@ -10,10 +12,17 @@ def app():
 
     app = Flask(__name__)
 
+    @app.before_request
+    def start_request_timer():
+        from flask import g
+        g.start_time = time.perf_counter()
+
     @app.route("/protected")
     @token_required
     def protected():
-        return {"success": True}
+        return {
+            "success": True
+        }
 
     return app
 
@@ -28,7 +37,13 @@ def test_return_401_without_token(client):
     response = client.get("/protected")
 
     assert response.status_code == 401
-    assert response.json["error"] == "Token missing"
+
+    body = response.get_json()
+
+    assert body["message"] == "Request failed"
+    assert body["error"] == "Token missing"
+    assert "timestamp" in body
+    assert isinstance(body["elapsed"], int)
 
 
 def test_return_401_invalid_header(client):
@@ -41,7 +56,13 @@ def test_return_401_invalid_header(client):
     )
 
     assert response.status_code == 401
-    assert response.json["error"] == "Invalid authorization header"
+
+    body = response.get_json()
+
+    assert body["message"] == "Request failed"
+    assert body["error"] == "Invalid authorization header"
+    assert "timestamp" in body
+    assert isinstance(body["elapsed"], int)
 
 
 def test_return_401_invalid_token(client):
@@ -54,7 +75,13 @@ def test_return_401_invalid_token(client):
     )
 
     assert response.status_code == 401
-    assert response.json["error"] == "Invalid token"
+
+    body = response.get_json()
+
+    assert body["message"] == "Request failed"
+    assert body["error"] == "Invalid token"
+    assert "timestamp" in body
+    assert isinstance(body["elapsed"], int)
 
 
 def test_return_401_expired_token(client):
@@ -74,7 +101,13 @@ def test_return_401_expired_token(client):
     )
 
     assert response.status_code == 401
-    assert response.json["error"] == "Token expired"
+
+    body = response.get_json()
+
+    assert body["message"] == "Request failed"
+    assert body["error"] == "Token expired"
+    assert "timestamp" in body
+    assert isinstance(body["elapsed"], int)
 
 
 def test_allow_valid_token(client):
@@ -93,4 +126,7 @@ def test_allow_valid_token(client):
     )
 
     assert response.status_code == 200
-    assert response.json["success"] is True
+
+    body = response.get_json()
+
+    assert body["success"] is True
