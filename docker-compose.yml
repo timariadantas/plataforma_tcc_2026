@@ -119,3 +119,11 @@ services:
       postgres-sales:
         condition: service_healthy
     restart: unless-stopped
+
+  currency-service:
+    mem_limit: 512m
+    build: ./services/currency-service
+    container_name: currency_service
+    ports:
+      - "5080:8080"
+    restart: unless-stopped
