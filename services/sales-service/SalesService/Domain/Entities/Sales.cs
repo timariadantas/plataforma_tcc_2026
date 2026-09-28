@@ -90,9 +90,17 @@ public class Sale
     {
         if (!_items.Any())
             throw new BusinessException("Sale has no items");
-        
+
+        if (Status == SaleStatus.Done)
+        throw new BusinessException("Sale already completed.");
+
+        if (Status != SaleStatus.Progress)
+        throw new BusinessException(
+            "Sale cannot be completed in its current status.");
+
         if(Status == SaleStatus.Canceled)
             throw new BusinessException("Sale Canceled");
+
 
         Status = SaleStatus.Done;
         UpdatedAt = DateTime.UtcNow;

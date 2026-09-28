@@ -103,54 +103,108 @@ public class SaleService : ISaleService
 }
 
     public async Task<SaleTotalResponse> FinishSale(string saleId)
+{
+    _logger.LogInformation(
+        "Finishing sale {SaleId}",
+        saleId);
+
+    var sale = _repository.GetById(saleId);
+
+    if (sale == null)
+        throw new NotFoundException("Sale not found");
+
+    // 1. Validação do estoque
+    foreach (var item in sale.Items)
     {
-        _logger.LogInformation(
-            "Finishing sale {SaleId}",saleId);
+        var stock = await _productservice.GetStock(item.ProductId);
 
-        var sale = _repository.GetById(saleId);
-        if(sale ==null)
-            throw new NotFoundException("Sale not found");
-
-        // valida o estoque 
-        foreach (var item in sale.Items)
+        if (item.Quantity > stock)
         {
-            var stock = await _productservice.GetStock(item.ProductId);
+            _logger.LogWarning(
+                "Insufficient stock for product {ProductId}",
+                item.ProductId);
 
-            if (item.Quantity > stock)
-                throw new BusinessException(
-                    $"Insufficient stock for product {item.ProductId}"); 
+            throw new BusinessException(
+                $"Insufficient stock for product {item.ProductId}");
         }
-            
-        // baixa no estoque 
+    }
+
+    // 2. Baixa do estoque + compensação
+    var decreasedItems = new List<SaleItem>();
+
+    try
+    {
         foreach (var item in sale.Items)
         {
             _logger.LogInformation(
-                "Decreasing stock for product {ProductId}", item.ProductId);
-                
+                "Decreasing stock for product {ProductId}",
+                item.ProductId);
+
             await _productservice.DecreaseStock(
-                item.ProductId, item.Quantity);
-            
+                item.ProductId,
+                item.Quantity);
+
+            decreasedItems.Add(item);
         }
-        sale.Finish();
-        _repository.Update(sale);
-
-        // buscar moedas
-        var rates = await _currencyService.GetAllRates();
-
-        var totals = new Dictionary<string, decimal>();
-
-        foreach (var rate in rates)
-        {
-            totals[rate.Key]= Math.Round(sale.Total / rate.Value, 2);
-        }
-
-        return new SaleTotalResponse
-        {
-            TotalBRL = sale.Total,
-            Coins = totals
-        };
-
     }
+    catch (Exception ex)
+    {
+        _logger.LogError(
+            ex,
+            "Error while decreasing stock for sale {SaleId}. Starting compensation.",
+            saleId);
+
+        // 3. Compensação
+        foreach (var item in decreasedItems)
+        {
+            try
+            {
+                _logger.LogWarning(
+                    "Compensating stock for product {ProductId}",
+                    item.ProductId);
+
+                await _productservice.IncreaseStock(
+                    item.ProductId,
+                    item.Quantity);
+
+                _logger.LogInformation(
+                    "Stock compensation completed for product {ProductId}",
+                    item.ProductId);
+            }
+            catch (Exception compensationException)
+            {
+                _logger.LogCritical(
+                    compensationException,
+                    "CRITICAL: Stock compensation failed for product {ProductId} in sale {SaleId}. Manual intervention may be required.",
+                    item.ProductId,
+                    saleId);
+            }
+        }
+
+        throw;
+    }
+
+    // 4. Finaliza a venda
+    sale.Finish();
+    _repository.Update(sale);
+
+    // 5. Busca as cotações
+    var rates = await _currencyService.GetAllRates();
+
+    var totals = new Dictionary<string, decimal>();
+
+    foreach (var rate in rates)
+    {
+        totals[rate.Key] =
+            Math.Round(sale.Total / rate.Value, 2);
+    }
+
+    return new SaleTotalResponse
+    {
+        TotalBRL = sale.Total,
+        Coins = totals
+    };
+}
 
     public void CancelSale(string saleId)
     {
