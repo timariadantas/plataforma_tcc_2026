@@ -1,7 +1,9 @@
 from domain.entities.client import Client
 from infrastructure.logger.logger import get_logger
 from infrastructure.errors.service_errors import (
-    DatabaseUnavailableError, ClientNotFoundError
+    DatabaseUnavailableError, 
+    ClientNotFoundError, 
+    ClientEmailAlreadyExistsError
 )
 import bcrypt
 
@@ -27,12 +29,19 @@ class ClientService:
 
             self.repository.save(client)
 
-            logger.info(">>> HASHING PASSWORD ATUAL")
             return client
 
+        except ClientEmailAlreadyExistsError:
+            raise
+
+        except DatabaseUnavailableError:
+            raise
+
         except Exception as e:
-            logger.error(f"Error creating client: {str(e)}")
-            raise DatabaseUnavailableError("Client service temporarily unavailable") from e
+            logger.error(f"Unexpected error creating client: {str(e)}")
+            raise DatabaseUnavailableError(
+                "Client service temporarily unavailable"
+            ) from e
 
   
     def get_client(self, client_id: str):
@@ -48,52 +57,86 @@ class ClientService:
             return client
         except ClientNotFoundError:
             raise
+        except DatabaseUnavailableError:
+            raise
 
         except Exception as e:
-            logger.error(f"Database failure on get: {str(e)}")
+            logger.error(f"Unexpected database error fetching client: {str(e)}")
             raise DatabaseUnavailableError("Client service temporarily unavailable") from e
 
    
     def get_all_clients(self):
         try:
             return self.repository.get_all()
+        
+        except DatabaseUnavailableError:
+            raise
 
         except Exception as e:
-            logger.error(f"Database failure on active {str(e)}")
+            logger.error(f"Unexpected database error fetching clients: {str(e)}")
             raise DatabaseUnavailableError("Client service temporarily unavailable") from e
 
 
     def get_active_clients(self):
         try:
             return self.repository.get_all_active()
+        
+        except DatabaseUnavailableError:
+            raise
 
         except Exception as e:
-            logger.error(f"Database failure on active: {str(e)}")
+            logger.error(f"Unexpected database error fetching active clients: {str(e)}")
             raise DatabaseUnavailableError("Client service temporarily unavailable") from e
 
 
     def get_inactive_clients(self):  
         try:
             return self.repository.get_all_inactive()
-
+        
+        except DatabaseUnavailableError:
+            raise
+        
         except Exception as e:
-            logger.error(f"Database failure on active: {str(e)}")
+            logger.error(f"Unexpected database error fetching inactive clients: {str(e)}")
             raise DatabaseUnavailableError("Client service temporarily unavailable") from e
 
-    
-    def update_client(self, client: Client):
+    def update_client(
+    self,
+    client_id: str,
+    name: str,
+    surname: str,
+    email: str
+):
         try:
-            logger.info(f"Updating client: {client.id}")
+            logger.info(f"Updating client: {client_id}")
 
-            self.repository.update(client)
+            self.repository.update(
+                client_id=client_id,
+                name=name,
+                surname=surname,
+                email=email
+        )
 
-            logger.info(f"Client updated: {client.id}")
-            return client
+            logger.info(f"Client updated: {client_id}")
+
+            return self.repository.get_by_id(client_id)
+
+        except ClientNotFoundError:
+            raise
+
+        except ClientEmailAlreadyExistsError:
+            raise
+
+        except DatabaseUnavailableError:
+            raise
 
         except Exception as e:
-            logger.error(f"Database failure on update: {str(e)}")
-            raise DatabaseUnavailableError("Client service temporarily unavailable") from e
+            logger.error(f"Unexpected error updating client: {str(e)}")
 
+        raise DatabaseUnavailableError(
+            "Client service temporarily unavailable"
+        ) from e
+   
     def change_password(self, client_id, new_password):
         try:
             logger.info(f"Changing password for client: {client_id}")
@@ -107,8 +150,14 @@ class ClientService:
 
             logger.info(f"Password updated: {client_id}")
 
+        except ClientNotFoundError:
+            raise
+
+        except DatabaseUnavailableError:
+            raise
+        
         except Exception as e:
-            logger.error(f"Error changing password: {str(e)}")
+            logger.error(f"Unexpected database error changing password:{str(e)}")
             raise DatabaseUnavailableError("Client service temporarily unavailable") from e
     
     def delete_client(self, client_id: str):
@@ -118,7 +167,13 @@ class ClientService:
             self.repository.delete(client_id)
 
             logger.warning(f"Client deleted: {client_id}")
+            
+        except ClientNotFoundError:
+            raise
 
+        except DatabaseUnavailableError:
+            raise
+        
         except Exception as e:
-            logger.error(f"Database failure on delete: {str(e)}")
+            logger.error(f"Unexpected database error deleting client: {str(e)}")
             raise DatabaseUnavailableError("Client service temporarily unavailable") from e

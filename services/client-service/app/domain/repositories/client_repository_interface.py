@@ -10,7 +10,13 @@ class ClientRepositoryInterface(ABC):
         pass
     
     @abstractmethod
-    def update(self, client):
+    def update(
+        self,
+        client_id: str,
+        name: str,
+        surname: str,
+        email: str
+):
         pass
     
     @abstractmethod
