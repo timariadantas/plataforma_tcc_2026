@@ -92,12 +92,59 @@ def test_update_client(service, repository_mock):
 
     client = create_client()
 
-    result = service.update_client(client)
+    repository_mock.get_by_id.return_value = client
 
-    repository_mock.update.assert_called_once_with(client)
+    result = service.update_client(
+        client_id="123",
+        name="Maria",
+        surname="Dantas",
+        email="maria@email.com"
+    )
+
+    repository_mock.update.assert_called_once_with(
+        client_id="123",
+        name="Maria",
+        surname="Dantas",
+        email="maria@email.com"
+    )
+
+    repository_mock.get_by_id.assert_called_once_with("123")
 
     assert result == client
+def test_update_client_not_found(
+    service,
+    repository_mock
+):
 
+    repository_mock.update.side_effect = ClientNotFoundError(
+        "Client 123 not found"
+    )
+
+    with pytest.raises(ClientNotFoundError):
+
+        service.update_client(
+            client_id="123",
+            name="Maria",
+            surname="Dantas",
+            email="maria@email.com"
+        )
+def test_update_client_database_error(
+    service,
+    repository_mock
+):
+
+    repository_mock.update.side_effect = DatabaseUnavailableError(
+        "Client service temporarily unavailable"
+    )
+
+    with pytest.raises(DatabaseUnavailableError):
+
+        service.update_client(
+            client_id="123",
+            name="Maria",
+            surname="Dantas",
+            email="maria@email.com"
+        )
 def test_change_password(service, repository_mock):
     service.change_password(
         "123",

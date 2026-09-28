@@ -8,19 +8,23 @@ from infrastructure.errors.service_errors import (
     DatabaseUnavailableError
 )
 
+
 @pytest.fixture
 def client():
     app.config["TESTING"] = True
-    
+
     with app.test_client() as client:
         yield client
-        
+
+
 def test_login_successfully(client):
+
     with patch(
         "api.controller.auth_controller.auth_service.login"
     ) as login_mock:
+
         login_mock.return_value = "fake-jwt-token"
-        
+
         response = client.post(
             "/auth/login",
             json={
@@ -28,12 +32,20 @@ def test_login_successfully(client):
                 "password": "112233"
             }
         )
-        
+
         assert response.status_code == 200
+
         data = response.get_json()
-        
-        assert data["token"] == "fake-jwt-token"
-        
+
+        assert data["message"] == "Login successful"
+        assert isinstance(data["timestamp"], str)
+        assert isinstance(data["elapsed"], int)
+
+        assert data["data"]["token"] == "fake-jwt-token"
+
+        assert "error" not in data
+
+
 def test_return_401_when_credentials_are_invalid(client):
 
     with patch(
@@ -56,10 +68,16 @@ def test_return_401_when_credentials_are_invalid(client):
 
         data = response.get_json()
 
+        assert data["message"] == "Request failed"
+        assert isinstance(data["timestamp"], str)
+        assert isinstance(data["elapsed"], int)
+
         assert data["error"] == "Invalid email or password"
 
+        assert "data" not in data
 
-def test_return_500_when_database_is_unavailable(client):
+
+def test_return_503_when_database_is_unavailable(client):
 
     with patch(
         "api.controller.auth_controller.auth_service.login"
@@ -77,8 +95,15 @@ def test_return_500_when_database_is_unavailable(client):
             }
         )
 
-        assert response.status_code == 500
+        assert response.status_code == 503
 
         data = response.get_json()
 
+        assert data["message"] == "Request failed"
+        assert isinstance(data["timestamp"], str)
+        assert isinstance(data["elapsed"], int)
+
         assert data["error"] == "Database unavailable"
+
+        assert "data" not in data
+

@@ -4,6 +4,10 @@ from datetime import date, datetime, timezone
 
 from infrastructure.repositories.client_repository import ClientRepository
 from domain.entities.client import Client
+from infrastructure.errors.service_errors import (
+    ClientNotFoundError,
+    ClientEmailAlreadyExistsError
+)
 import ulid 
 
 @pytest.fixture
@@ -136,18 +140,54 @@ def test_get_all_client(repository):
     assert len(result) == 1
     
 def test_update_client(repository):
-    repo, db, conn, cursor = repository 
-    client = Client(
-        "test",
-        "tests",
-        "email@email.com",
-        "112233", 
-        date(1993,1,5)
+
+    repo, db, conn, cursor = repository
+
+    repo.update(
+        client_id="1",
+        name="Maria",
+        surname="Dantas",
+        email="maria@email.com"
     )
-    client.id = "1"
-    repo.update(client)
+
     cursor.execute.assert_called_once()
     conn.commit.assert_called_once()
+def test_update_client_duplicate_email(repository):
+
+    repo, db, conn, cursor = repository
+
+    cursor.execute.side_effect = Exception(
+        "ORA-00001: unique constraint violated"
+    )
+
+    with pytest.raises(ClientEmailAlreadyExistsError):
+
+        repo.update(
+            client_id="1",
+            name="Maria",
+            surname="Dantas",
+            email="email@email.com"
+        )
+
+    conn.rollback.assert_called_once()
+    conn.commit.assert_not_called()
+def test_update_client_not_found(repository):
+
+    repo, db, conn, cursor = repository
+
+    cursor.rowcount = 0
+
+    with pytest.raises(ClientNotFoundError):
+
+        repo.update(
+            client_id="999",
+            name="Maria",
+            surname="Dantas",
+            email="maria@email.com"
+        )
+
+    conn.rollback.assert_called_once()
+    conn.commit.assert_not_called()
     
 def test_delete_client(repository):
     repo, db, conn, cursor = repository 
