@@ -1,14 +1,18 @@
+using System.Text.Json.Serialization;
+
 namespace SalesService.Application.DTO.Response;
 
 public class ApiResponse<T>
 {
-    public string Message{get;set;} = string.Empty;
+    public string Message { get; set; } = string.Empty;
+
     public DateTime Timestamp { get; set; }
-        = DateTime.UtcNow;
 
     public long Elapsed { get; set; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public T? Data { get; set; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Error { get; set; }
 }

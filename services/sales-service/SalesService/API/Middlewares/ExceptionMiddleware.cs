@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using SalesService.Domain.Exceptions;
 using SalesService.Application.DTO.Response;
+using System.Text.Json.Serialization;
 
 namespace SalesService.API.Middlewares;
 
@@ -20,6 +21,7 @@ public class ExceptionMiddleware
 
     public async Task Invoke (HttpContext context)
     {
+        var startTime = DateTime.UtcNow;
         try
         {
             await _next (context);
@@ -30,10 +32,10 @@ public class ExceptionMiddleware
                 ex,
                 "Unhandled exception: {Message}",
                 ex.Message);
-            await HandleException(context, ex);
+            await HandleException(context, ex, startTime);
         }
     }
-    private static Task HandleException(HttpContext context, Exception ex)
+    private static async Task HandleException(HttpContext context, Exception ex , DateTime startTime)
     {
         var statusCode = HttpStatusCode.InternalServerError;
 
@@ -46,7 +48,7 @@ public class ExceptionMiddleware
                 statusCode = HttpStatusCode.BadRequest;
                 break;
             case BusinessException:
-                statusCode = HttpStatusCode.UnprocessableEntity;
+                statusCode = HttpStatusCode.Conflict;
                 break;
             case ConflictException:
                 statusCode = HttpStatusCode.Conflict;
@@ -55,26 +57,40 @@ public class ExceptionMiddleware
             case UnauthorizedException:
                 statusCode = HttpStatusCode.Unauthorized;
                 break;
+            case DependencyTimeoutException:
+                statusCode = HttpStatusCode.GatewayTimeout;
+                break;
+            case DependencyUnavailableException:
+                statusCode = HttpStatusCode.ServiceUnavailable;
+                break;
         }
-          var response = new ApiResponse<object>
+       
+        var elapsed = (long)(
+            DateTime.UtcNow - startTime
+        ).TotalMilliseconds;
+
+         var response = new ApiResponse<object>
         {
             Message = "Request failed",
-            Elapsed = 0,
-            Error = ex.Message,
-            Data = null
+            Timestamp = DateTime.UtcNow,
+            Elapsed = elapsed,
+            Error = ex.Message
         };
 
-        var json = JsonSerializer.Serialize(response);
-
-        context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)statusCode;
+        context.Response.ContentType = "application/json";
 
-        return context.Response.WriteAsync(json);
+        await context.Response.WriteAsJsonAsync(
+            response,
+            new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+
+                DefaultIgnoreCondition =
+                    JsonIgnoreCondition.WhenWritingNull
+            }
+        );
     }
-
-
-
-    }
-
+}
 
 
