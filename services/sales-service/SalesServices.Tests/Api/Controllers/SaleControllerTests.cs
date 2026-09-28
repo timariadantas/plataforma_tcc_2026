@@ -11,6 +11,7 @@ using SalesService.Application.DTO.Response;
 using SalesService.Application.Repositories;
 using SalesService.Domain.Entities;
 using SalesService.Domain.Enums;
+using SalesService.Domain.Exceptions;
 
 namespace SalesServices.Tests.Api.Controllers;
 
@@ -100,11 +101,13 @@ public class SalesControllerTests
 
         // Act
 
-        var result = await _controller.Create();
+        var exception = await Assert.ThrowsAsync<UnauthorizedException>(
+             () => _controller.Create());
 
         // Assert
 
-        Assert.IsType<UnauthorizedResult>(result);
+        Assert.Equal( "Authentication required",
+        exception.Message);
 
         _serviceMock.Verify(
             x => x.CreateSale(It.IsAny<string>()),
@@ -208,23 +211,14 @@ public async Task UpdateItem_Should_Return_Ok()
 
     var ok = Assert.IsType<OkObjectResult>(result);
 
-    Assert.NotNull(ok.Value);
+    var response = Assert.IsType<ApiResponse<object>>(ok.Value);
 
-    var value = ok.Value;
+    Assert.Equal( 
+        "Item updated successfully",
+        response.Message);
 
-    var successProperty = value!.GetType().GetProperty("success");
-    var messageProperty = value.GetType().GetProperty("message");
+    Assert.Null(response.Error);
 
-    Assert.NotNull(successProperty);
-    Assert.NotNull(messageProperty);
-
-    Assert.Equal(
-        true,
-        successProperty!.GetValue(value));
-
-    Assert.Equal(
-        "Item updated",
-        messageProperty!.GetValue(value));
 
     _serviceMock.Verify(x =>
         x.UpdateItem(
@@ -261,13 +255,16 @@ public async Task Finish_Should_Return_Ok()
     var ok = Assert.IsType<OkObjectResult>(result);
 
     var api =
-        Assert.IsType<ApiResponse<object>>(ok.Value);
+        Assert.IsType<ApiResponse<SaleTotalResponse>>(ok.Value);
 
     Assert.Equal(
         "Sale finished successfully",
         api.Message);
 
     Assert.NotNull(api.Data);
+    Assert.Equal( 200, api.Data!.TotalBRL); 
+    
+    Assert.Equal( 40, api.Data.Coins["USD"]);
 
     _serviceMock.Verify(
         x => x.FinishSale("sale-001"),

@@ -36,14 +36,21 @@ public class ExceptionMiddlewareTests
         await middleware.Invoke(context);
 
         // Assert
-        Assert.Equal((int)HttpStatusCode.NotFound, context.Response.StatusCode);
+        Assert.Equal((int)HttpStatusCode.NotFound,
+        context.Response.StatusCode);
 
         context.Response.Body.Position = 0;
 
         var body = await new StreamReader(context.Response.Body).ReadToEndAsync();
 
         var response =
-            JsonSerializer.Deserialize<ApiResponse<object>>(body);
+            JsonSerializer.Deserialize<ApiResponse<object>>(
+                body,
+                new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
 
         Assert.NotNull(response);
         Assert.Equal("Sale not found", response!.Error);
@@ -67,7 +74,7 @@ public class ExceptionMiddlewareTests
     }
 
     [Fact]
-    public async Task Invoke_Should_Return_422_When_BusinessException_Is_Thrown()
+    public async Task Invoke_Should_Return_409_When_BusinessException_Is_Thrown()
     {
         RequestDelegate next = context =>
             throw new BusinessException("Business error");
@@ -79,7 +86,7 @@ public class ExceptionMiddlewareTests
 
         await middleware.Invoke(context);
 
-        Assert.Equal((int)HttpStatusCode.UnprocessableEntity,
+        Assert.Equal((int)HttpStatusCode.Conflict,
             context.Response.StatusCode);
     }
 

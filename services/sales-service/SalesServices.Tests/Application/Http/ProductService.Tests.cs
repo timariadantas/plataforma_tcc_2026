@@ -20,9 +20,13 @@ public async Task GetStock_Should_Return_Quantity()
     var json =
         """
         {
-            "id":"product-001",
-            "price":10.5,
-            "quantity":20
+            "message": "Product found",
+            "timestamp": "2026-09-14T20:00:00Z",
+            "elapsed": 1, 
+            "data": { "id": "product-001",
+               "price": 10.5, 
+               "quantity": 20
+        }
         }
         """;
 
@@ -54,10 +58,14 @@ public async Task GetPrice_Should_Return_Price()
     var json =
         """
         {
-            "id":"product-001",
-            "price":15.75,
-            "quantity":8
-        }
+            "message": "Product found",
+            "timestamp": "2026-09-14T20:00:00Z",
+            "elapsed": 1, 
+            "data": { 
+               "id": "product-001",
+               "price": 15.75, 
+               "quantity": 8
+        }}
         """;
 
     var handler = new FakeHttpMessageHandler(
@@ -184,7 +192,7 @@ public async Task DecreaseStock_Should_Throw_ValidationException()
     var service =
         new ProductServiceClient(http, logger.Object);
 
-    await Assert.ThrowsAsync<ValidationException>(() =>
+    await Assert.ThrowsAsync<DependencyUnavailableException>(() =>
         service.DecreaseStock("product-001", 5));
 }
 

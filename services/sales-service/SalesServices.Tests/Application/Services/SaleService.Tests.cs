@@ -510,4 +510,70 @@ public async Task FinishSale_Should_Throw_When_Sale_Has_No_Items()
         () => _service.FinishSale(sale.Id));
 }
 
+[Fact]
+public async Task FinishSale_Should_Compensate_Stock_When_Second_Product_Fails()
+{
+    // Arrange
+
+    var sale = new Sale("client-001");
+
+    sale.AddItem("product-001", 2, 100);
+    sale.AddItem("product-002", 2, 50);
+
+    _repositoryMock
+        .Setup(x => x.GetById(sale.Id))
+        .Returns(sale);
+
+    // Ambos possuem estoque suficiente no pré-check
+    _productMock
+        .Setup(x => x.GetStock("product-001"))
+        .ReturnsAsync(10);
+
+    _productMock
+        .Setup(x => x.GetStock("product-002"))
+        .ReturnsAsync(10);
+
+    // Primeiro produto consegue reduzir o estoque
+    _productMock
+        .Setup(x => x.DecreaseStock("product-001", 2))
+        .Returns(Task.CompletedTask);
+
+    // Segundo produto falha
+    _productMock
+        .Setup(x => x.DecreaseStock("product-002", 2))
+        .ThrowsAsync(
+            new DependencyUnavailableException(
+                "Product Service is unavailable."));
+
+    // Act + Assert
+
+    await Assert.ThrowsAsync<DependencyUnavailableException>(
+        () => _service.FinishSale(sale.Id));
+
+    // O primeiro produto foi realmente reduzido
+    _productMock.Verify(
+        x => x.DecreaseStock("product-001", 2),
+        Times.Once);
+
+    // O segundo produto tentou reduzir e falhou
+    _productMock.Verify(
+        x => x.DecreaseStock("product-002", 2),
+        Times.Once);
+
+    // O primeiro produto precisa ser compensado
+    _productMock.Verify(
+        x => x.IncreaseStock("product-001", 2),
+        Times.Once);
+
+    // A venda NÃO deve ser finalizada
+    Assert.NotEqual(
+        SaleStatus.Done,
+        sale.Status);
+
+    // O repository NÃO deve salvar a venda como finalizada
+    _repositoryMock.Verify(
+        x => x.Update(sale),
+        Times.Never);
+}
+
 }
