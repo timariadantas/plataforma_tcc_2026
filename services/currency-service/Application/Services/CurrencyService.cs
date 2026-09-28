@@ -1,63 +1,78 @@
+using System.Globalization;
 using System.Text.Json;
 using CurrencyService.Domain;
+using CurrencyService.Domain.Exceptions;
 
 namespace CurrencyService.Application.Services;
 
 public class CurrencyService : ICurrencyService
 {
     private readonly HttpClient _httpClient;
+    private readonly ILogger<CurrencyService> _logger;
     private static List<CurrencyRate>? _cache;
     private static DateTime _lastUpdate;
 
-    public CurrencyService (HttpClient httpClient) // DI
+    public CurrencyService (HttpClient httpClient, ILogger<CurrencyService> logger) // DI
     {
         _httpClient = httpClient;
+        _logger = logger;
 
     }
 
     public async Task <List<CurrencyRate>> GetAllAsync()
     {
+        _logger.LogInformation(
+            "Getting all currency rates.");
+
         if (_cache != null && _lastUpdate.Date == DateTime.UtcNow.Date)
         {
+            _logger.LogInformation(
+                "Currency rates retrieved from cache. Last update: {LastUpdate}",
+            _lastUpdate);
+
             return _cache;
         }
 
         var url = "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,GBP-BRL,CNY-BRL";
 
-        var response = await _httpClient.GetAsync(url);
-        if (!response.IsSuccessStatusCode)
-{
-    return new List<CurrencyRate>
-    {
-        new CurrencyRate
-        {
-            Code = "USD",
-            Value = 5.40m,
-            CreatedAt = DateTime.UtcNow
-        },
+        _logger.LogInformation( "Requesting currency rates from external provider.");
 
-        new CurrencyRate
-        {
-            Code = "EUR",
-            Value = 6.20m,
-            CreatedAt = DateTime.UtcNow
-        },
+        HttpResponseMessage response;
 
-        new CurrencyRate
+        try
         {
-            Code = "GBP",
-            Value = 7.10m,
-            CreatedAt = DateTime.UtcNow
-        },
-
-        new CurrencyRate
-        {
-            Code = "CNY",
-            Value = 0.76m,
-            CreatedAt = DateTime.UtcNow
+            response = await _httpClient.GetAsync(url);
         }
-    };
-}
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(
+            ex,
+                "Currency provider request timed out.");
+
+            throw new CurrencyServiceUnavailableException(
+                "Currency provider timeout.",
+                ex);
+        }
+        catch (HttpRequestException ex)
+        {
+             _logger.LogError(
+            ex,
+                "Currency provider request failed.");
+
+            throw new CurrencyServiceUnavailableException(
+                "Currency provider is unavailable.",
+                ex);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError(
+                "Currency provider returned HTTP status code {StatusCode}.",
+            response.StatusCode); 
+
+            throw new CurrencyServiceUnavailableException(
+                "Currency provider is unavailable.");
+        }
 
         var json = await response.Content.ReadAsStringAsync();
 
@@ -77,15 +92,40 @@ public class CurrencyService : ICurrencyService
         _cache = rates;
         _lastUpdate = DateTime.UtcNow;
 
+        _logger.LogInformation(
+            "Currency rates successfully updated in cache at {LastUpdate}.",
+        _lastUpdate);
+
         return rates;
     }
 
     public async Task<CurrencyRate?> GetByCodeAsync(string code)
     {
+        _logger.LogInformation(
+            "Getting currency rate for code {CurrencyCode}.", code);
+
         var rates = await GetAllAsync();
-        return rates.FirstOrDefault(x => 
+        
+        var rate = rates.FirstOrDefault(x => 
         x.Code.Equals(code, StringComparison.OrdinalIgnoreCase));
+
+        if (rate == null) 
+        { 
+            _logger.LogWarning( "Currency rate not found for code {CurrencyCode}.", code); 
+        }
+
+        else 
+        { 
+            _logger.LogInformation( "Currency rate found for code {CurrencyCode}.", code); 
+        } 
+        
+        return rate;
+        
+        
     }
+        
+
+    
 
     private CurrencyRate CreateRate(
         JsonElement root, 
@@ -96,7 +136,8 @@ public class CurrencyService : ICurrencyService
         var currency = root.GetProperty(propertyName);
 
         var value = decimal.Parse(
-            currency.GetProperty("bid").GetString()!);
+            currency.GetProperty("bid").GetString()!,
+            CultureInfo.InvariantCulture);
 
         return new CurrencyRate
         {
