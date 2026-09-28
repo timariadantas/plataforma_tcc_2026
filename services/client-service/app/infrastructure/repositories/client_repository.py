@@ -3,8 +3,12 @@ from domain.entities.client import Client
 from datetime import datetime, date, timezone
 from infrastructure.logger.logger import get_logger
 
-logger = get_logger("ClientRepository")
+from infrastructure.errors.service_errors import (
+    ClientNotFoundError,
+    ClientEmailAlreadyExistsError,
+    DatabaseUnavailableError)
 
+logger = get_logger("ClientRepository")
 
 class ClientRepository(ClientRepositoryInterface):
 
@@ -12,18 +16,35 @@ class ClientRepository(ClientRepositoryInterface):
         self.db = db_connection
         
     def save(self, client: Client):
+
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
+
             try:
                 logger.info(f"Inserting client: {client.email}")
 
                 cursor.execute("""
                     INSERT INTO client (
-                        id, name, surname, email, password_hash, birthdate,
-                        active, created_at, updated_at
-                    ) VALUES (
-                        :id, :name, :surname, :email,:password_hash, :birthdate,
-                        :active, :created_at, :updated_at
+                        id,
+                        name,
+                        surname,
+                        email,
+                        password_hash,
+                        birthdate,
+                        active,
+                        created_at,
+                        updated_at
+                    )
+                    VALUES (
+                        :id,
+                        :name,
+                        :surname,
+                        :email,
+                        :password_hash,
+                        :birthdate,
+                        :active,
+                        :created_at,
+                        :updated_at
                     )
                 """, {
                     "id": client.id,
@@ -38,12 +59,35 @@ class ClientRepository(ClientRepositoryInterface):
                 })
 
                 conn.commit()
-                logger.info(f"Client inserted successfully: {client.id}")
+
+                logger.info(
+                    f"Client inserted successfully: {client.id}"
+                )
 
             except Exception as e:
+
                 conn.rollback()
-                logger.error(f"Error inserting client: {str(e)}")
-                raise
+
+                error_message = str(e).lower()
+
+                if (
+                    "unique constraint" in error_message
+                    or "ora-00001" in error_message
+                ):
+                    logger.warning(f"Email already exists: {client.email}")
+
+                    raise ClientEmailAlreadyExistsError(
+                        "Client email already exists"
+                    ) from e
+
+                logger.error(
+                    f"Error inserting client: {str(e)}"
+                )
+
+                raise DatabaseUnavailableError(
+                    "Client service temporarily unavailable"
+                ) from e
+
             finally:
                 cursor.close()
 
@@ -145,11 +189,17 @@ class ClientRepository(ClientRepositoryInterface):
                 cursor.close()
 
    
-    def update(self, client: Client):
+    def update(self,
+        client_id: str,
+        name: str,
+        surname: str,
+        email: str
+        ):
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
+
             try:
-                logger.info(f"Updating client: {client.id}")
+                logger.info(f"Updating client: {client_id}")
 
                 cursor.execute("""
                     UPDATE client
@@ -159,43 +209,83 @@ class ClientRepository(ClientRepositoryInterface):
                         updated_at = :updated_at
                     WHERE id = :id
                 """, {
-                    "id": client.id,
-                    "name": client.name,
-                    "surname": client.surname,
-                    "email": client.email,
+                    "id": client_id,
+                    "name": name,
+                    "surname": surname,
+                    "email": email,
                     "updated_at": datetime.now(timezone.utc)
                 })
 
+                if cursor.rowcount == 0:
+                    raise ClientNotFoundError(f"Client {client_id} not found")
+
                 conn.commit()
-                logger.info(f"Client updated: {client.id}")
+                logger.info(f"Client updated: {client_id}")
+
+            except ClientNotFoundError:
+                conn.rollback()
+                raise
 
             except Exception as e:
                 conn.rollback()
-                logger.error(f"Error updating client: {str(e)}")
-                raise
+
+                error_message = str(e).lower()
+
+                if (
+                    "unique constraint" in error_message
+                    or "ora-00001" in error_message
+                ):
+                    raise ClientEmailAlreadyExistsError(
+                        "Client email already exists"
+                    ) from e
+
+                logger.error(f"Error updating client: {str(e)}"
+                )
+
+                raise DatabaseUnavailableError(
+                    "Client service temporarily unavailable"
+                ) from e
+
             finally:
                 cursor.close()
                 
-    def update_password(self, client_id:str, password_hash:str):
+    def update_password(self, client_id: str, password_hash: str):
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE client
-                SET password_hash = :password_hash,
-                    updated_at = :updated_at
-                WHERE id = :id
-            """, {
-                "id" : client_id,
-                "password_hash" : password_hash,
-                "updated_at" : datetime.now(timezone.utc)
-            })
-            conn.commit()
+            try:
+                cursor.execute("""
+                    UPDATE client
+                    SET password_hash = :password_hash,
+                        updated_at = :updated_at
+                    WHERE id = :id
+                """, {
+                    "id": client_id,
+                    "password_hash": password_hash,
+                    "updated_at": datetime.now(timezone.utc)
+                })
+
+                if cursor.rowcount == 0:
+                    raise ClientNotFoundError(f"Client {client_id} not found")
+
+                conn.commit()
+                logger.info(f"Password updated: {client_id}")
+
+            except ClientNotFoundError:
+                conn.rollback()
+                raise
+
+            except Exception as e:
+                conn.rollback()
+
+                logger.error(f"Error updating password: {str(e)}")
+
+                raise DatabaseUnavailableError(
+                    "Client service temporarily unavailable"
+                ) from e
+
+            finally:
+                cursor.close()
         
-        
-        
-        
-        
-   
     def delete(self, client_id: str):
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
@@ -212,13 +302,26 @@ class ClientRepository(ClientRepositoryInterface):
                     "updated_at": datetime.now(timezone.utc)
                 })
 
+                if cursor.rowcount == 0:
+                    raise ClientNotFoundError(f"Client {client_id} not found")
+
                 conn.commit()
+
                 logger.info(f"Client deactivated: {client_id}")
+
+            except ClientNotFoundError:
+                conn.rollback()
+                raise
 
             except Exception as e:
                 conn.rollback()
+
                 logger.error(f"Error deleting client: {str(e)}")
-                raise
+
+                raise DatabaseUnavailableError(
+                    "Client service temporarily unavailable"
+                ) from e
+
             finally:
                 cursor.close()
 
