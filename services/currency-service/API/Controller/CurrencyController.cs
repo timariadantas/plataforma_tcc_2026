@@ -1,5 +1,11 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using CurrencyService.Domain;
 using CurrencyService.Application.Services;
+using CurrencyService.Application.DTO.Response;
+
+
 
 namespace CurrencyService.API.Controller;
 
@@ -9,46 +15,66 @@ namespace CurrencyService.API.Controller;
 public class CurrencyController : ControllerBase
 {
     private readonly ICurrencyService _currencyService;
+    private readonly ILogger<CurrencyController> _logger;
 
-    public CurrencyController(ICurrencyService currencyService)
+    public CurrencyController(ICurrencyService currencyService, ILogger<CurrencyController> logger)
     {
         _currencyService = currencyService;
+        _logger = logger;
     }
 
     [HttpGet]
     public async Task <IActionResult> GetAll()
-    {
-        var rates = await _currencyService.GetAllAsync();
 
-        return Ok(new
+    {
+        var start = Stopwatch.GetTimestamp();
+         _logger.LogInformation(
+            "GET /currency started.");
+
+        var rates = await _currencyService.GetAllAsync();
+        var elapsed = (long)Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+
+        _logger.LogInformation( "GET /currency completed in {Elapsed} ms.", elapsed);
+
+        return Ok(new ApiResponse<List<CurrencyRate>>
         {
-            message = "Currencies found",
-            timestamp = DateTime.UtcNow,
-            elapsed = 0,
-            data = rates
+            Message = "Currencies found",
+            Timestamp = DateTime.UtcNow,
+            Elapsed = elapsed,
+            Data = rates
         });
     }
     [HttpGet("{code}")]
     public async Task <IActionResult> GetByCode(string code)
         {
+            var start = Stopwatch.GetTimestamp();
+            
+            _logger.LogInformation(
+                "GET /currency/{CurrencyCode} started.", code);
+
             var rate = await _currencyService.GetByCodeAsync(code);
 
+            var elapsed = (long)Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+
             if (rate == null)
-        {
-            return NotFound(new
             {
-                 message = "Currency not found",
-                timestamp = DateTime.UtcNow,
-                elapsed = 0,
-                error = "Invalid currency code"
-            });
+                _logger.LogWarning( "GET /currency/{CurrencyCode} returned not found.", code);
+                return NotFound(new ApiResponse<CurrencyRate>
+                {
+                    Message = "Currency not found",
+                    Timestamp = DateTime.UtcNow,
+                    Elapsed = elapsed,
+                    Error = "Invalid currency code"
+                });
         }
-        return Ok(new
+        _logger.LogInformation( "GET /currency/{CurrencyCode} completed in {Elapsed} ms.", code, elapsed);
+        
+        return Ok(new ApiResponse<CurrencyRate>
         {
-            message = "Currency found",
-            timestamp = DateTime.UtcNow,
-            elapsed = 0,
-            data = rate
+            Message = "Currency found",
+            Timestamp = DateTime.UtcNow,
+            Elapsed = elapsed,
+            Data = rate
         });
 
     }
