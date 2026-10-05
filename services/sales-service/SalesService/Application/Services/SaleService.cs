@@ -54,14 +54,13 @@ public class SaleService : ISaleService
 
     }
 
-    public async Task AddItem(string saleId, string productId, int quantity)
+   public async Task AddItem(string saleId, string productId, int quantity)
 {
     _logger.LogInformation(
         "Adding item {ProductId} to sale {SaleId}",
         productId,
         saleId);
 
-    // busca a venda
     var sale = _repository.GetById(saleId);
 
     if (sale == null)
@@ -70,14 +69,20 @@ public class SaleService : ISaleService
     if (quantity <= 0)
         throw new ValidationException("Invalid quantity");
 
-    // consulta estoque no product-service
+    var existingItem = sale.Items
+        .FirstOrDefault(item => item.ProductId == productId);
+
+    var currentQuantity = existingItem?.Quantity ?? 0;
+
+    var totalQuantity = currentQuantity + quantity;
+
     var stock = await _productservice.GetStock(productId);
 
     _logger.LogInformation(
         "Stock returned from product service: {Stock}",
         stock);
 
-    if (quantity > stock)
+    if (totalQuantity > stock)
     {
         _logger.LogWarning(
             "Insufficient stock for product {ProductId}",
@@ -86,14 +91,10 @@ public class SaleService : ISaleService
         throw new BusinessException("Insufficient stock");
     }
 
-    // consulta preço no product-service
     var price = await _productservice.GetPrice(productId);
 
-    // adiciona item na entidade
     sale.AddItem(productId, quantity, price);
 
-
-    // atualiza venda
     _repository.Update(sale);
 
     _logger.LogInformation(

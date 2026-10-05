@@ -177,7 +177,92 @@ public async Task AddItem_Should_Add_Item()
         x => x.Update(sale),
         Times.Once);
 }
+[Fact]
+public async Task AddItem_Should_Increase_Quantity_When_Product_Already_Exists()
+{
+    // Arrange
 
+    var sale = new Sale("client-001");
+
+    sale.AddItem(
+        "product-001",
+        2,
+        100);
+
+    _repositoryMock
+        .Setup(x => x.GetById(sale.Id))
+        .Returns(sale);
+
+    _productMock
+        .Setup(x => x.GetStock("product-001"))
+        .ReturnsAsync(10);
+
+    _productMock
+        .Setup(x => x.GetPrice("product-001"))
+        .ReturnsAsync(100);
+
+    // Act
+
+    await _service.AddItem(
+        sale.Id,
+        "product-001",
+        3);
+
+    // Assert
+
+    Assert.Single(sale.Items);
+
+    Assert.Equal(
+        5,
+        sale.Items.First().Quantity);
+
+    Assert.Equal(
+        100,
+        sale.Items.First().UnitPrice);
+
+    _repositoryMock.Verify(
+        x => x.Update(sale),
+        Times.Once);
+}
+
+[Fact]
+public async Task AddItem_Should_Throw_When_Total_Quantity_Exceeds_Stock()
+{
+    // Arrange
+
+    var sale = new Sale("client-001");
+
+    sale.AddItem(
+        "product-001",
+        8,
+        100);
+
+    _repositoryMock
+        .Setup(x => x.GetById(sale.Id))
+        .Returns(sale);
+
+    _productMock
+        .Setup(x => x.GetStock("product-001"))
+        .ReturnsAsync(10);
+
+    // Act + Assert
+
+    await Assert.ThrowsAsync<BusinessException>(
+        () => _service.AddItem(
+            sale.Id,
+            "product-001",
+            3));
+
+    // A quantidade original não deve ter sido alterada
+    Assert.Equal(
+        8,
+        sale.Items.First().Quantity);
+
+    // Não deve persistir a venda
+    _repositoryMock.Verify(
+        x => x.Update(sale),
+        Times.Never);
+}
 [Fact]
 public async Task AddItem_Should_Throw_When_Stock_Is_Insufficient()
 {

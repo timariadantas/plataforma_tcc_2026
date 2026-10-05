@@ -72,19 +72,29 @@ public class Sale
 
         // regra de negócio (Venda)
     public void AddItem(string productId, int quantity, decimal unitPrice)
-    {
-        if (Status == SaleStatus.Done || Status == SaleStatus.Canceled)
-            throw new BusinessException ("Sale cannot be changed.");
-        if (quantity <= 0)
-            throw new ValidationException("Quantity invalid.");
+{
+    if (Status == SaleStatus.Done || Status == SaleStatus.Canceled)
+        throw new BusinessException("Sale cannot be changed.");
 
+    if (quantity <= 0)
+        throw new ValidationException("Quantity invalid.");
+
+    var existingItem = _items
+        .FirstOrDefault(item => item.ProductId == productId);
+
+    if (existingItem != null)
+    {
+        existingItem.UpdateQuantity(existingItem.Quantity + quantity);
+    }
+    else
+    {
         var item = new SaleItem(Id, productId, quantity, unitPrice);
         _items.Add(item);
-
-        Status = SaleStatus.Progress;
-        UpdatedAt = DateTime.UtcNow;
-
     }
+
+    Status = SaleStatus.Progress;
+    UpdatedAt = DateTime.UtcNow;
+}
 
     public void Finish()
     {
