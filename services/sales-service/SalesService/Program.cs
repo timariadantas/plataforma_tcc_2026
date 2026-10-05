@@ -76,10 +76,48 @@ builder.Services
 
             return default;
         }
+});  
+        pipeline.AddCircuitBreaker(
+        new HttpCircuitBreakerStrategyOptions
+        {
+            FailureRatio = 0.5,
+            SamplingDuration = TimeSpan.FromSeconds(10),
+            MinimumThroughput = 4,
+            BreakDuration = TimeSpan.FromSeconds(10),
 
-                
+            ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                .Handle<HttpRequestException>()
+                .HandleResult(response =>
+                    response.RequestMessage?.Method == HttpMethod.Get &&
+                    ((int)response.StatusCode >= 500 ||
+                     response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)),
+
+            OnOpened = args =>
+            {
+                Console.WriteLine(
+                    "===== CIRCUIT BREAKER CLIENT ABERTO =====");
+
+                return default;
+            },
+
+            OnClosed = args =>
+            {
+                Console.WriteLine(
+                    "===== CIRCUIT BREAKER CLIENT FECHADO =====");
+
+                return default;
+            },
+
+            OnHalfOpened = args =>
+            {
+                Console.WriteLine(
+                    "===== CIRCUIT BREAKER CLIENT HALF-OPEN =====");
+
+                return default;
+            }
         });
-    });
+});
+
 
 // Product Service (porta 5001) container
 builder.Services
@@ -90,6 +128,7 @@ builder.Services
 })
 .AddResilienceHandler("product-service-resilience", pipeline =>
     {
+        // Retry: somente GET
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 2,
@@ -97,13 +136,54 @@ builder.Services
             BackoffType = DelayBackoffType.Exponential,
             UseJitter = true,
 
-            //retry para get
+    
             ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
                 .Handle<HttpRequestException>()
                 .HandleResult(response =>
                     response.RequestMessage?.Method == HttpMethod.Get &&
                     ((int)response.StatusCode >= 500 ||
                      response.StatusCode == System.Net.HttpStatusCode.RequestTimeout))
+        });
+    
+    // Circuit Breaker : GET E PATCH
+    pipeline.AddCircuitBreaker(
+        new HttpCircuitBreakerStrategyOptions
+        {
+            FailureRatio = 0.5,
+            SamplingDuration = TimeSpan.FromSeconds(10),
+            MinimumThroughput = 4,
+            BreakDuration = TimeSpan.FromSeconds(10),
+
+            ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                .Handle<HttpRequestException>()
+                .HandleResult(response =>
+                    response.RequestMessage?.Method == HttpMethod.Get &&
+                    ((int)response.StatusCode >= 500 ||
+                     response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)),
+
+            OnOpened = args =>
+            {
+                Console.WriteLine(
+                    "===== CIRCUIT BREAKER PRODUCT ABERTO =====");
+
+                return default;
+            },
+
+            OnClosed = args =>
+            {
+                Console.WriteLine(
+                    "===== CIRCUIT BREAKER PRODUCT FECHADO =====");
+
+                return default;
+            },
+
+            OnHalfOpened = args =>
+            {
+                Console.WriteLine(
+                    "===== CIRCUIT BREAKER PRODUCT HALF-OPEN =====");
+
+                return default;
+            }
         });
     });
 
@@ -115,6 +195,67 @@ builder.Services
 
         client.Timeout =
             TimeSpan.FromSeconds(5);
+    })
+    .AddResilienceHandler("currency-service-resilience", pipeline =>
+    {
+        pipeline.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 2,
+            Delay = TimeSpan.FromSeconds(1),
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+
+            ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                .Handle<HttpRequestException>()
+                .HandleResult(response =>
+                    response.RequestMessage?.Method == HttpMethod.Get &&
+                    ((int)response.StatusCode >= 500 ||
+                     response.StatusCode ==
+                        System.Net.HttpStatusCode.RequestTimeout))
+        });
+
+        pipeline.AddCircuitBreaker(
+            new HttpCircuitBreakerStrategyOptions
+            {
+                FailureRatio = 0.5,
+                SamplingDuration = TimeSpan.FromSeconds(10),
+                MinimumThroughput = 4,
+                BreakDuration = TimeSpan.FromSeconds(10),
+
+                ShouldHandle =
+                    new PredicateBuilder<HttpResponseMessage>()
+                        .Handle<HttpRequestException>()
+                        .HandleResult(response =>
+                            response.RequestMessage?.Method ==
+                                HttpMethod.Get &&
+                            ((int)response.StatusCode >= 500 ||
+                             response.StatusCode ==
+                                System.Net.HttpStatusCode.RequestTimeout)),
+
+                OnOpened = args =>
+                {
+                    Console.WriteLine(
+                        "===== CIRCUIT BREAKER CURRENCY ABERTO =====");
+
+                    return default;
+                },
+
+                OnClosed = args =>
+                {
+                    Console.WriteLine(
+                        "===== CIRCUIT BREAKER CURRENCY FECHADO =====");
+
+                    return default;
+                },
+
+                OnHalfOpened = args =>
+                {
+                    Console.WriteLine(
+                        "===== CIRCUIT BREAKER CURRENCY HALF-OPEN =====");
+
+                    return default;
+                }
+            });
     });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -181,7 +322,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             });
     }
 };
+
     });
+    
         
     
 
